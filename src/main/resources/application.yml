@@ -2,12 +2,12 @@ spring:
   application:
     name: card-trading-backend
 
-  datasource:
-    # Usamos los nombres exactos que configuramos en Railway
-    url: ${DATABASE_URL}
-    username: ${DATABASE_USERNAME}
-    password: ${DATABASE_PASSWORD}
-    driver-class-name: org.postgresql.Driver
+datasource:
+  # La URL ahora solo lleva el host, el puerto y la base de datos
+  url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+  username: ${DB_USER}
+  password: ${DB_PASSWORD}
+  driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
