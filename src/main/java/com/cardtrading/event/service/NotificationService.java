@@ -2,17 +2,12 @@ package com.cardtrading.event.service;
 
 import com.cardtrading.auth.entity.User;
 import com.cardtrading.auth.repository.UserRepository;
-import jakarta.mail.MessagingException;
-import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
-import org.springframework.beans.factory.annotation.Value;
 
 import java.util.Map;
 import java.util.UUID;
@@ -22,14 +17,9 @@ import java.util.UUID;
 @Slf4j
 public class NotificationService {
 
-    private final JavaMailSender mailSender;
+    private final SendGridEmailService emailService;
     private final TemplateEngine templateEngine;
     private final UserRepository userRepository;
-    @Value("${app.mail.from}")  // ← AÑADE ESTO
-    private String mailFrom;
-
-    @Value("${app.mail.from-name}")  // ← AÑADE ESTO
-    private String mailFromName;
 
     public void sendRegistrationConfirmation(UUID userId, String username, String email) {
         Context context = new Context();
@@ -91,21 +81,9 @@ public class NotificationService {
     private void sendEmail(String to, String subject, String template, Context context) {
         try {
             String html = templateEngine.process(template, context);
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setTo(to);
-            helper.setSubject(subject);
-            helper.setText(html, true);
-            // Maneja la excepción del setFrom
-            try {
-                helper.setFrom(mailFrom, mailFromName);
-            } catch (java.io.UnsupportedEncodingException e) {
-                log.warn("Unsupported encoding for from name, using email only");
-                helper.setFrom(mailFrom);
-            }
-            mailSender.send(message);
+            emailService.sendEmail(to, subject, html);
             log.info("Email sent to={} subject={} traceId={}", to, subject, MDC.get("traceId"));
-        } catch (MessagingException e) {
+        } catch (Exception e) {
             log.error("Failed to send email to={} subject={} traceId={}", to, subject, MDC.get("traceId"), e);
         }
     }
