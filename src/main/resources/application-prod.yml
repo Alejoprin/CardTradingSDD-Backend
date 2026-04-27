@@ -33,6 +33,9 @@ spring:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
       password: ${REDIS_PASSWORD}
+      ssl:
+        enabled: ${REDIS_SSL:false}
+      timeout: 10000
 
   mail:
     host: smtp.sendgrid.net
