@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Trade Accepted</title>
+</head>
+<body>
+    <h1>Trade Accepted</h1>
+    <p>Hi <span th:text="${recipientUsername}">User</span>,</p>
+    <p>Your trade (ID: <span th:text="${tradeId}">ID</span>) has been accepted.</p>
+    <p>The card exchange is being processed. You will receive another notification when it's complete.</p>
+</body>
+</html>

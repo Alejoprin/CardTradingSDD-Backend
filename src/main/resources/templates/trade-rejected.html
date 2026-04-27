@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Trade Rejected</title>
+</head>
+<body>
+    <h1>Trade Rejected</h1>
+    <p>Hi <span th:text="${offererUsername}">User</span>,</p>
+    <p>Your trade offer (ID: <span th:text="${tradeId}">ID</span>) has been rejected.</p>
+    <p th:if="${reason != null}">Reason: <span th:text="${reason}">No reason given</span></p>
+</body>
+</html>

@@ -1,0 +1,36 @@
+.claude/
+!.claude/skills/
+
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+hs_err_pid*
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.swp
+*.swo
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Environment / Secrets
+.env
+.env.*
+!.env.example
+
+# Docker (data volumes)
+docker/data/

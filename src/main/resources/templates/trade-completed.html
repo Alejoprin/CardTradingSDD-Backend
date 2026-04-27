@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Trade Completed</title>
+</head>
+<body>
+    <h1>Trade Completed!</h1>
+    <p>Hi <span th:text="${recipientUsername}">User</span>,</p>
+    <p>Your trade (ID: <span th:text="${tradeId}">ID</span>) has been completed successfully.</p>
+    <p>The cards have been exchanged. Check your inventory to see your new cards!</p>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>New Trade Offer</title>
+</head>
+<body>
+    <h1>New Trade Offer Received</h1>
+    <p>Hi <span th:text="${receiverUsername}">User</span>,</p>
+    <p><span th:text="${offererUsername}">Someone</span> has sent you a trade offer.</p>
+    <p>Trade ID: <span th:text="${tradeId}">ID</span></p>
+    <p>Log in to review and respond to this trade offer.</p>
+</body>
+</html>
