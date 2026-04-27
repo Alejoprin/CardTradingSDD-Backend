@@ -1,28 +1,43 @@
 spring:
+  config:
+    activate:
+      on-profile: prod
+
   datasource:
     url: ${DATABASE_URL}
     username: ${DATABASE_USERNAME}
     password: ${DATABASE_PASSWORD}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      connection-timeout: 20000
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: validate # Correcto para prod, Flyway manda
     show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
 
   flyway:
     enabled: true
     baseline-on-migrate: true
+    locations: classpath:db/migration
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      retries: 3
     consumer:
+      group-id: card-trading-group
+      auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
@@ -36,6 +51,9 @@ spring:
       ssl:
         enabled: ${REDIS_SSL:false}
       timeout: 10000
+    # Esto soluciona el error de "Multiple Spring Data modules" que vimos en tus logs
+    repositories:
+      enabled: false
 
   mail:
     host: smtp.sendgrid.net
@@ -49,6 +67,16 @@ spring:
           starttls:
             enable: true
 
+# Configuración de Actuator (Recomendado para Railway Health Checks)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+
 jwt:
   secret: ${JWT_SECRET}
   expiration: 3600000
@@ -60,4 +88,5 @@ app:
     from-name: Card Trading Platform
 
 server:
-  port: 8080
+  port: ${PORT:8080} # Railway inyecta la variable PORT
+  shutdown: graceful # Para no cortar conexiones al desplegar una nueva versión
