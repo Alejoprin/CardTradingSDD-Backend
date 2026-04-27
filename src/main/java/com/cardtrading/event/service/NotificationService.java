@@ -12,6 +12,7 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.Map;
 import java.util.UUID;
@@ -24,6 +25,11 @@ public class NotificationService {
     private final JavaMailSender mailSender;
     private final TemplateEngine templateEngine;
     private final UserRepository userRepository;
+    @Value("${app.mail.from}")  // ← AÑADE ESTO
+    private String mailFrom;
+
+    @Value("${app.mail.from-name}")  // ← AÑADE ESTO
+    private String mailFromName;
 
     public void sendRegistrationConfirmation(UUID userId, String username, String email) {
         Context context = new Context();
@@ -86,11 +92,17 @@ public class NotificationService {
         try {
             String html = templateEngine.process(template, context);
             MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true);
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setTo(to);
             helper.setSubject(subject);
             helper.setText(html, true);
-            helper.setFrom("noreply@cardtrading.com");
+            // Maneja la excepción del setFrom
+            try {
+                helper.setFrom(mailFrom, mailFromName);
+            } catch (java.io.UnsupportedEncodingException e) {
+                log.warn("Unsupported encoding for from name, using email only");
+                helper.setFrom(mailFrom);
+            }
             mailSender.send(message);
             log.info("Email sent to={} subject={} traceId={}", to, subject, MDC.get("traceId"));
         } catch (MessagingException e) {

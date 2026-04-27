@@ -98,7 +98,7 @@ class AuthIntegrationTest {
         // 3. Access protected endpoint with valid token
         mockMvc.perform(get("/api/v1/cards")
                         .header("Authorization", "Bearer " + tokenResponse.getAccessToken()))
-                .andExpect(status().isNotFound().isNotFound().is4xxClientError());
+                .andExpect(status().isNotFound());;
         // Note: cards endpoint not implemented yet, but should not return 401
 
         // 4. Access protected endpoint WITHOUT token -> 401/403

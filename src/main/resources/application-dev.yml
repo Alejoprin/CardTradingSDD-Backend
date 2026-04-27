@@ -19,16 +19,20 @@ spring:
       port: 6379
 
   mail:
-    host: localhost
-    port: 1025
-    username: ""
-    password: ""
+    host: smtp.sendgrid.net
+    port: 587
+    username: apikey  # ← Literal "apikey"
+    password: ${SENDGRID_API_KEY}  # ← PEGA TU API KEY
     properties:
       mail:
         smtp:
-          auth: false
+          auth: true
           starttls:
-            enable: false
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+    default-encoding: UTF-8
 
 logging:
   level:
@@ -39,3 +43,7 @@ management:
   endpoint:
     health:
       show-details: always
+app:
+  mail:
+    from: franbule950128@gmail.com  # ← Email verificado
+    from-name: Card Trading Platform
