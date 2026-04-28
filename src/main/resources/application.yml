@@ -69,6 +69,8 @@ app:
     secret: ${JWT_SECRET}
     access-token-expiration: 3600000
     refresh-token-expiration: 604800000
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS}
 
 server:
   # Railway usa la variable PORT, no SERVER_PORT
