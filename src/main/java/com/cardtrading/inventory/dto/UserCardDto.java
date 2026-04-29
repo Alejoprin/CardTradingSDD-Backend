@@ -15,7 +15,12 @@ import java.util.UUID;
 public class UserCardDto {
     private UUID cardId;
     private String cardName;
+    private String description;
     private String rarity;
+    private String cardType;
+    private String edition;
+    private String imageUrl;
+    private boolean isCustom;
     private int quantity;
     private LocalDateTime acquiredAt;
     private String acquiredFrom;

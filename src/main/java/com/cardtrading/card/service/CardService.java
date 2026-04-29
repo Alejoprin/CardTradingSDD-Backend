@@ -17,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -29,6 +30,7 @@ import java.util.UUID;
 public class CardService {
 
     private final CardRepository cardRepository;
+    private final ImageStorageService imageStorageService;
 
     @Cacheable(value = "card:catalog", key = "#search + '-' + #rarity + '-' + #cardType + '-' + #edition + '-' + #pageable.pageNumber + '-' + #pageable.pageSize")
     public Page<CardSummaryResponse> listCards(String search, String rarity, String cardType, String edition, Pageable pageable) {
@@ -45,10 +47,14 @@ public class CardService {
 
     @Transactional
     @CacheEvict(value = {"card:catalog", "card:detail"}, allEntries = true)
-    public CardDetailResponse createCard(CardRequest request) {
+    public CardDetailResponse createCard(CardRequest request, MultipartFile image) {
         if (cardRepository.existsByName(request.getName())) {
             throw new BusinessRuleException("A card with that name already exists");
         }
+
+        String imageUrl = (image != null && !image.isEmpty())
+                ? imageStorageService.store(image)
+                : request.getImageUrl();
 
         Card card = Card.builder()
                 .name(request.getName())
@@ -56,7 +62,7 @@ public class CardService {
                 .rarity(Card.Rarity.valueOf(request.getRarity()))
                 .cardType(Card.CardType.valueOf(request.getCardType()))
                 .edition(request.getEdition())
-                .imageUrl(request.getImageUrl())
+                .imageUrl(imageUrl)
                 .build();
 
         card = cardRepository.save(card);
@@ -66,7 +72,7 @@ public class CardService {
 
     @Transactional
     @CacheEvict(value = {"card:catalog", "card:detail"}, allEntries = true)
-    public CardDetailResponse updateCard(UUID cardId, CardRequest request) {
+    public CardDetailResponse updateCard(UUID cardId, CardRequest request, MultipartFile image) {
         Card card = cardRepository.findById(cardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Card not found"));
 
@@ -80,7 +86,13 @@ public class CardService {
         if (request.getRarity() != null) card.setRarity(Card.Rarity.valueOf(request.getRarity()));
         if (request.getCardType() != null) card.setCardType(Card.CardType.valueOf(request.getCardType()));
         if (request.getEdition() != null) card.setEdition(request.getEdition());
-        if (request.getImageUrl() != null) card.setImageUrl(request.getImageUrl());
+
+        if (image != null && !image.isEmpty()) {
+            imageStorageService.delete(card.getImageUrl());
+            card.setImageUrl(imageStorageService.store(image));
+        } else if (request.getImageUrl() != null) {
+            card.setImageUrl(request.getImageUrl());
+        }
 
         card = cardRepository.save(card);
         log.info("Card updated: cardId={}", card.getId());
@@ -100,6 +112,8 @@ public class CardService {
     private Specification<Card> buildSpecification(String search, String rarity, String cardType, String edition) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+
+            predicates.add(cb.isNull(root.get("ownerId")));
 
             if (search != null && !search.isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("name")), "%" + search.toLowerCase() + "%"));

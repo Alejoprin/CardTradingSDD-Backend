@@ -50,6 +50,9 @@ public class Card {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    @Column(name = "owner_id")
+    private UUID ownerId;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

@@ -62,6 +62,6 @@ public class UserCard {
     }
 
     public enum AcquisitionSource {
-        SYSTEM, TRADE, PURCHASE
+        SYSTEM, TRADE, PURCHASE, MANUAL
     }
 }

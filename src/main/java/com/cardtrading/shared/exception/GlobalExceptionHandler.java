@@ -45,6 +45,7 @@ public class GlobalExceptionHandler {
         Map<String, String> details = new HashMap<>();
         ex.getBindingResult().getFieldErrors()
                 .forEach(error -> details.put(error.getField(), error.getDefaultMessage()));
+        log.warn("Validation failed: {}", details);
         return buildResponse(HttpStatus.BAD_REQUEST, "Validation failed", details);
     }
 

@@ -150,7 +150,7 @@ public class TradeService {
     public Page<TradeResponse> listUserTrades(UUID userId, String status, String direction, Pageable pageable) {
         Page<Trade> trades;
         if (status != null && !status.isBlank()) {
-            Trade.TradeStatus tradeStatus = Trade.TradeStatus.valueOf(status);
+            Trade.TradeStatus tradeStatus = Trade.TradeStatus.valueOf(status.toUpperCase());
             trades = tradeRepository.findByOffererIdOrReceiverIdAndStatus(userId, tradeStatus, pageable);
         } else {
             trades = tradeRepository.findByOffererIdOrReceiverId(userId, pageable);
