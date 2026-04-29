@@ -2,6 +2,7 @@ package com.cardtrading.integration;
 
 import com.cardtrading.auth.dto.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
+
+import java.util.Arrays;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -60,6 +63,17 @@ class AuthIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    private String extractRefreshTokenCookie(MvcResult result) {
+        String setCookie = result.getResponse().getHeader("Set-Cookie");
+        if (setCookie == null) return null;
+        return Arrays.stream(setCookie.split(";"))
+                .map(String::trim)
+                .filter(s -> s.startsWith("refresh_token="))
+                .map(s -> s.substring("refresh_token=".length()))
+                .findFirst()
+                .orElse(null);
+    }
+
     @Test
     @DisplayName("Full auth flow: register -> login -> access protected -> 401 without token")
     void fullAuthFlow() throws Exception {
@@ -77,7 +91,7 @@ class AuthIntegrationTest {
                 .andExpect(jsonPath("$.username").value("integrationuser"))
                 .andExpect(jsonPath("$.role").value("USER"));
 
-        // 2. Login
+        // 2. Login - access token in body, refresh token in cookie
         LoginRequest loginRequest = LoginRequest.builder()
                 .email("integration@example.com")
                 .password("Password1")
@@ -88,8 +102,9 @@ class AuthIntegrationTest {
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isNotEmpty())
-                .andExpect(jsonPath("$.refreshToken").isNotEmpty())
+                .andExpect(jsonPath("$.refreshToken").doesNotExist())
                 .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                .andExpect(header().exists("Set-Cookie"))
                 .andReturn();
 
         TokenResponse tokenResponse = objectMapper.readValue(
@@ -98,7 +113,7 @@ class AuthIntegrationTest {
         // 3. Access protected endpoint with valid token
         mockMvc.perform(get("/api/v1/cards")
                         .header("Authorization", "Bearer " + tokenResponse.getAccessToken()))
-                .andExpect(status().isNotFound());;
+                .andExpect(status().isNotFound());
         // Note: cards endpoint not implemented yet, but should not return 401
 
         // 4. Access protected endpoint WITHOUT token -> 401/403
@@ -136,7 +151,6 @@ class AuthIntegrationTest {
     @Test
     @DisplayName("Login with bad credentials returns 401")
     void shouldReject401OnBadCredentials() throws Exception {
-        // First register
         RegisterRequest registerRequest = RegisterRequest.builder()
                 .username("badcreduser")
                 .email("badcred@example.com")
@@ -148,7 +162,6 @@ class AuthIntegrationTest {
                         .content(objectMapper.writeValueAsString(registerRequest)))
                 .andExpect(status().isCreated());
 
-        // Then try bad password
         LoginRequest loginRequest = LoginRequest.builder()
                 .email("badcred@example.com")
                 .password("WrongPassword1")
@@ -161,7 +174,7 @@ class AuthIntegrationTest {
     }
 
     @Test
-    @DisplayName("Refresh token flow works")
+    @DisplayName("Refresh token flow works via cookie")
     void shouldRefreshToken() throws Exception {
         // Register + Login
         RegisterRequest registerRequest = RegisterRequest.builder()
@@ -186,17 +199,11 @@ class AuthIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        TokenResponse tokenResponse = objectMapper.readValue(
-                loginResult.getResponse().getContentAsString(), TokenResponse.class);
+        String refreshToken = extractRefreshTokenCookie(loginResult);
 
-        // Refresh
-        RefreshRequest refreshRequest = RefreshRequest.builder()
-                .refreshToken(tokenResponse.getRefreshToken())
-                .build();
-
+        // Refresh using cookie
         mockMvc.perform(post("/api/v1/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(refreshRequest)))
+                        .cookie(new Cookie("refresh_token", refreshToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isNotEmpty());
     }
@@ -227,31 +234,23 @@ class AuthIntegrationTest {
                 .andExpect(status().isOk())
                 .andReturn();
 
-        TokenResponse tokenResponse = objectMapper.readValue(
-                loginResult.getResponse().getContentAsString(), TokenResponse.class);
+        String refreshToken = extractRefreshTokenCookie(loginResult);
 
-        // Logout
-        RefreshRequest logoutRequest = RefreshRequest.builder()
-                .refreshToken(tokenResponse.getRefreshToken())
-                .build();
-
+        // Logout via cookie
         mockMvc.perform(post("/api/v1/auth/logout")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(logoutRequest)))
+                        .cookie(new Cookie("refresh_token", refreshToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Successfully logged out"));
 
         // Try to refresh with blacklisted token -> 401
         mockMvc.perform(post("/api/v1/auth/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(logoutRequest)))
+                        .cookie(new Cookie("refresh_token", refreshToken)))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     @DisplayName("Rate limiting blocks after 5 failed login attempts")
     void shouldRateLimitAfter5FailedAttempts() throws Exception {
-        // Register
         RegisterRequest registerRequest = RegisterRequest.builder()
                 .username("ratelimituser")
                 .email("ratelimit@example.com")
@@ -263,7 +262,6 @@ class AuthIntegrationTest {
                         .content(objectMapper.writeValueAsString(registerRequest)))
                 .andExpect(status().isCreated());
 
-        // 5 failed attempts
         LoginRequest badLogin = LoginRequest.builder()
                 .email("ratelimit@example.com")
                 .password("WrongPassword1")

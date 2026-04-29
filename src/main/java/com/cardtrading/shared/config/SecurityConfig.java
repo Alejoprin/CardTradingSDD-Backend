@@ -66,8 +66,8 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*")); // ← CAMBIO AQUÍ
-        configuration.setAllowCredentials(false); // JWT en header, no cookies
-        configuration.setExposedHeaders(List.of("Authorization")); // ← AÑADIR ESTO
+        configuration.setAllowCredentials(true); // Necesario para cookies HttpOnly
+        configuration.setExposedHeaders(List.of("Authorization"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

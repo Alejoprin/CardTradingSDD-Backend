@@ -67,7 +67,9 @@ public class AuthService {
         return toUserResponse(user);
     }
 
-    public TokenResponse login(LoginRequest request) {
+    public record LoginResult(TokenResponse tokenResponse, String refreshToken) {}
+
+    public LoginResult login(LoginRequest request) {
         loginRateLimitService.checkRateLimit(request.getEmail());
 
         User user = userRepository.findByEmail(request.getEmail().toLowerCase())
@@ -92,17 +94,16 @@ public class AuthService {
 
         log.info("User logged in: userId={}", user.getId());
 
-        return TokenResponse.builder()
+        TokenResponse tokenResponse = TokenResponse.builder()
                 .accessToken(accessToken)
-                .refreshToken(refreshToken)
                 .tokenType("Bearer")
                 .expiresIn(3600)
                 .build();
+
+        return new LoginResult(tokenResponse, refreshToken);
     }
 
-    public TokenResponse refreshToken(RefreshRequest request) {
-        String token = request.getRefreshToken();
-
+    public TokenResponse refreshToken(String token) {
         if (!jwtService.isTokenValid(token)) {
             throw new UnauthorizedException("Refresh token is invalid or expired");
         }
@@ -132,8 +133,7 @@ public class AuthService {
                 .build();
     }
 
-    public void logout(RefreshRequest request) {
-        String token = request.getRefreshToken();
+    public void logout(String token) {
         String blacklistKey = BLACKLIST_PREFIX + token;
         redisTemplate.opsForValue().set(blacklistKey, "1", Duration.ofDays(7));
         log.info("Refresh token blacklisted");

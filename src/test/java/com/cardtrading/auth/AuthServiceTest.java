@@ -149,11 +149,11 @@ class AuthServiceTest {
             when(jwtService.generateAccessToken(any(), any(), any())).thenReturn("access-token");
             when(jwtService.generateRefreshToken(any(), any())).thenReturn("refresh-token");
 
-            TokenResponse response = authService.login(request);
+            AuthService.LoginResult result = authService.login(request);
 
-            assertThat(response.getAccessToken()).isEqualTo("access-token");
-            assertThat(response.getRefreshToken()).isEqualTo("refresh-token");
-            assertThat(response.getTokenType()).isEqualTo("Bearer");
+            assertThat(result.tokenResponse().getAccessToken()).isEqualTo("access-token");
+            assertThat(result.tokenResponse().getTokenType()).isEqualTo("Bearer");
+            assertThat(result.refreshToken()).isEqualTo("refresh-token");
             verify(loginRateLimitService).resetAttempts("test@example.com");
         }
 
@@ -220,10 +220,6 @@ class AuthServiceTest {
         @Test
         @DisplayName("should refresh token successfully")
         void shouldRefreshSuccessfully() {
-            RefreshRequest request = RefreshRequest.builder()
-                    .refreshToken("valid-refresh-token")
-                    .build();
-
             when(jwtService.isTokenValid("valid-refresh-token")).thenReturn(true);
             when(jwtService.extractTokenType("valid-refresh-token")).thenReturn("refresh");
             when(redisTemplate.hasKey("token:blacklist:valid-refresh-token")).thenReturn(false);
@@ -233,22 +229,17 @@ class AuthServiceTest {
             when(jwtService.generateAccessToken(testUser.getId(), "test@example.com", "USER"))
                     .thenReturn("new-access-token");
 
-            TokenResponse response = authService.refreshToken(request);
+            TokenResponse response = authService.refreshToken("valid-refresh-token");
 
             assertThat(response.getAccessToken()).isEqualTo("new-access-token");
-            assertThat(response.getRefreshToken()).isNull();
         }
 
         @Test
         @DisplayName("should throw when refresh token is expired")
         void shouldThrowOnExpiredToken() {
-            RefreshRequest request = RefreshRequest.builder()
-                    .refreshToken("expired-token")
-                    .build();
-
             when(jwtService.isTokenValid("expired-token")).thenReturn(false);
 
-            assertThatThrownBy(() -> authService.refreshToken(request))
+            assertThatThrownBy(() -> authService.refreshToken("expired-token"))
                     .isInstanceOf(UnauthorizedException.class);
         }
     }
