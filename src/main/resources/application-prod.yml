@@ -3,6 +3,9 @@ spring:
     activate:
       on-profile: prod
 
+  application:
+    name: card-trading-backend
+
   datasource:
     url: ${DATABASE_URL}
     username: ${DATABASE_USERNAME}
@@ -17,12 +20,13 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate # Correcto para prod, Flyway manda
+      ddl-auto: validate
     show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: false
+    open-in-view: false
 
   flyway:
     enabled: true
@@ -41,7 +45,7 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        spring.json.trusted.packages: "*"
+        spring.json.trusted.packages: com.cardtrading.event.model
 
   data:
     redis:
@@ -51,7 +55,6 @@ spring:
       ssl:
         enabled: ${REDIS_SSL:false}
       timeout: 10000
-    # Esto soluciona el error de "Multiple Spring Data modules" que vimos en tus logs
     repositories:
       enabled: false
 
@@ -67,7 +70,25 @@ spring:
           starttls:
             enable: true
 
-# Configuración de Actuator (Recomendado para Railway Health Checks)
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    access-token-expiration: 3600000
+    refresh-token-expiration: 604800000
+  mail:
+    from: ${MAIL_FROM}
+    from-name: Card Trading Platform
+  cors:
+    allowed-origins: ${ALLOWED_ORIGINS}
+
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+
 management:
   endpoints:
     web:
@@ -76,19 +97,11 @@ management:
   endpoint:
     health:
       show-details: when_authorized
+      probes:
+        enabled: true
 
-jwt:
-  secret: ${JWT_SECRET}
-  expiration: 3600000
-  refresh-expiration: 604800000
-
-app:
-  mail:
-    from: ${MAIL_FROM}
-    from-name: Card Trading Platform
-  cors:
-    allowed-origins: ${ALLOWED_ORIGINS}
-
-server:
-  port: ${PORT:8080} # Railway inyecta la variable PORT
-  shutdown: graceful # Para no cortar conexiones al desplegar una nueva versión
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
