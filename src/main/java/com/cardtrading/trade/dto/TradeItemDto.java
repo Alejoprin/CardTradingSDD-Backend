@@ -12,7 +12,12 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class TradeItemDto {
+    private UUID userCardId;
     private UUID cardId;
     private String cardName;
+    private String rarity;
+    private String imageUrl;
+    private UUID fromUserId;
+    private String fromUsername;
     private int quantity;
 }

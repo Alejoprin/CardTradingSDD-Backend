@@ -15,16 +15,18 @@ import java.util.UUID;
 @AllArgsConstructor
 public class TradeResponse {
     private UUID id;
-    private UUID offererId;
-    private String offererUsername;
+    private UUID proposerId;
+    private String proposerUsername;
     private UUID receiverId;
     private String receiverUsername;
     private String status;
-    private List<TradeItemDto> offeredCards;
-    private List<TradeItemDto> requestedCards;
+    private String proposerNotes;
+    private String receiverNotes;
+    private List<TradeItemDto> items;
+    private LocalDateTime proposedAt;
+    private LocalDateTime respondedAt;
+    private LocalDateTime completedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private LocalDateTime acceptedAt;
-    private LocalDateTime completedAt;
     private String message;
 }

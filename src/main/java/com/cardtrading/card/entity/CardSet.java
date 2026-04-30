@@ -3,51 +3,41 @@ package com.cardtrading.card.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "cards")
+@Table(name = "card_sets")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Card {
+public class CardSet {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "set_id", nullable = false)
-    private CardSet set;
+    @JoinColumn(name = "game_id", nullable = false)
+    private CardGame game;
 
     @Column(nullable = false, length = 200)
     private String name;
 
-    @Column(name = "card_number", length = 50)
-    private String cardNumber;
+    @Column(nullable = false, length = 50)
+    private String code;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private Rarity rarity;
+    @Column(name = "release_date")
+    private LocalDate releaseDate;
 
-    @Column(columnDefinition = "jsonb")
-    private String attributes;
+    @Column(name = "total_cards")
+    private Integer totalCards;
 
-    @Column(name = "image_url", length = 500)
-    private String imageUrl;
-
-    @Column(name = "image_small_url", length = 500)
-    private String imageSmallUrl;
-
-    @Column(name = "market_price", precision = 10, scale = 2)
-    private BigDecimal marketPrice;
-
-    @Column(name = "last_price_update")
-    private LocalDateTime lastPriceUpdate;
+    @Column(name = "symbol_url", length = 500)
+    private String symbolUrl;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -64,9 +54,5 @@ public class Card {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
-    }
-
-    public enum Rarity {
-        COMMON, UNCOMMON, RARE, EPIC, LEGENDARY, SECRET
     }
 }

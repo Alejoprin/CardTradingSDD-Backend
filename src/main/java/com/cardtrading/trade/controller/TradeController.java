@@ -26,28 +26,20 @@ public class TradeController {
     @PostMapping
     public ResponseEntity<TradeResponse> createTrade(
             @Valid @RequestBody CreateTradeRequest request,
-            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
             Authentication authentication) {
-        UUID offererId = UUID.fromString(authentication.getName());
-        TradeResponse response = tradeService.createTrade(offererId, request, idempotencyKey);
-
-        if (response.getMessage() != null && response.getMessage().contains("Duplicate")) {
-            return ResponseEntity.ok(response);
-        }
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        UUID proposerId = UUID.fromString(authentication.getName());
+        return ResponseEntity.status(HttpStatus.CREATED).body(tradeService.createTrade(proposerId, request));
     }
 
     @GetMapping
     public ResponseEntity<Page<TradeResponse>> listTrades(
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String direction,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
         Pageable pageable = PageRequest.of(page, Math.min(size, 100));
-        Page<TradeResponse> trades = tradeService.listUserTrades(userId, status, direction, pageable);
-        return ResponseEntity.ok(trades);
+        return ResponseEntity.ok(tradeService.listUserTrades(userId, status, pageable));
     }
 
     @GetMapping("/{tradeId}")
@@ -55,8 +47,7 @@ public class TradeController {
             @PathVariable UUID tradeId,
             Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
-        TradeResponse response = tradeService.getTradeById(tradeId, userId);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(tradeService.getTradeById(tradeId, userId));
     }
 
     @PutMapping("/{tradeId}/accept")
@@ -64,8 +55,7 @@ public class TradeController {
             @PathVariable UUID tradeId,
             Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
-        TradeResponse response = tradeService.acceptTrade(tradeId, userId);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(tradeService.acceptTrade(tradeId, userId));
     }
 
     @PutMapping("/{tradeId}/reject")
@@ -75,8 +65,7 @@ public class TradeController {
             Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
         String reason = request != null ? request.getReason() : null;
-        TradeResponse response = tradeService.rejectTrade(tradeId, userId, reason);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(tradeService.rejectTrade(tradeId, userId, reason));
     }
 
     @DeleteMapping("/{tradeId}")
@@ -84,7 +73,6 @@ public class TradeController {
             @PathVariable UUID tradeId,
             Authentication authentication) {
         UUID userId = UUID.fromString(authentication.getName());
-        TradeResponse response = tradeService.cancelTrade(tradeId, userId);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(tradeService.cancelTrade(tradeId, userId));
     }
 }

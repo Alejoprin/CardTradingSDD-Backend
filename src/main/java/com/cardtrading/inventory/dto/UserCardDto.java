@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -13,15 +14,22 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserCardDto {
+    private UUID userCardId;
     private UUID cardId;
+    private UUID customCardId;
+    private boolean custom;
     private String cardName;
-    private String description;
+    private String cardNumber;
     private String rarity;
-    private String cardType;
-    private String edition;
     private String imageUrl;
-    private boolean isCustom;
+    private String imageSmallUrl;
+    private BigDecimal marketPrice;
+    private String setName;
+    private String gameName;
     private int quantity;
+    private String condition;
+    private boolean forTrade;
+    private boolean forSale;
+    private String notes;
     private LocalDateTime acquiredAt;
-    private String acquiredFrom;
 }

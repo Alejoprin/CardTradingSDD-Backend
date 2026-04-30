@@ -3,7 +3,6 @@ package com.cardtrading.trade.entity;
 import com.cardtrading.auth.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.Where;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -12,7 +11,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "trades")
-@Where(clause = "deleted_at IS NULL")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -25,8 +23,8 @@ public class Trade {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "offerer_id", nullable = false)
-    private User offerer;
+    @JoinColumn(name = "proposer_id", nullable = false)
+    private User proposer;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "receiver_id", nullable = false)
@@ -37,23 +35,26 @@ public class Trade {
     @Builder.Default
     private TradeStatus status = TradeStatus.PENDING;
 
-    @Column(name = "idempotency_key", length = 36)
-    private String idempotencyKey;
+    @Column(name = "proposer_notes", columnDefinition = "TEXT")
+    private String proposerNotes;
+
+    @Column(name = "receiver_notes", columnDefinition = "TEXT")
+    private String receiverNotes;
+
+    @Column(name = "proposed_at", nullable = false)
+    private LocalDateTime proposedAt;
+
+    @Column(name = "responded_at")
+    private LocalDateTime respondedAt;
+
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
-
-    @Column(name = "accepted_at")
-    private LocalDateTime acceptedAt;
-
-    @Column(name = "completed_at")
-    private LocalDateTime completedAt;
-
-    @Column(name = "deleted_at")
-    private LocalDateTime deletedAt;
 
     @OneToMany(mappedBy = "trade", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
@@ -63,6 +64,9 @@ public class Trade {
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
+        if (proposedAt == null) {
+            proposedAt = LocalDateTime.now();
+        }
     }
 
     @PreUpdate
@@ -71,6 +75,6 @@ public class Trade {
     }
 
     public enum TradeStatus {
-        PENDING, ACCEPTED, REJECTED, COMPLETED, CANCELLED, FAILED
+        PENDING, ACCEPTED, REJECTED, CANCELLED, COMPLETED
     }
 }

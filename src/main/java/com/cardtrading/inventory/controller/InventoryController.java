@@ -34,7 +34,7 @@ public class InventoryController {
         return ResponseEntity.ok(inventoryService.getUserInventory(userId, pageable));
     }
 
-    @PostMapping("/{userId}/inventory/catalog")
+    @PostMapping("/{userId}/inventory")
     public ResponseEntity<UserCardDto> addCatalogCard(
             @PathVariable UUID userId,
             @Valid @RequestBody AddCatalogCardRequest request,
@@ -53,5 +53,15 @@ public class InventoryController {
         UUID requesterId = UUID.fromString(authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(inventoryService.addCustomCard(userId, requesterId, request, image));
+    }
+
+    @DeleteMapping("/{userId}/inventory/{userCardId}")
+    public ResponseEntity<Void> removeCard(
+            @PathVariable UUID userId,
+            @PathVariable UUID userCardId,
+            Authentication authentication) {
+        UUID requesterId = UUID.fromString(authentication.getName());
+        inventoryService.removeUserCard(userCardId, requesterId);
+        return ResponseEntity.noContent().build();
     }
 }

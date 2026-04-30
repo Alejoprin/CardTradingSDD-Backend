@@ -3,7 +3,9 @@ package com.cardtrading.inventory.service;
 import com.cardtrading.auth.entity.User;
 import com.cardtrading.auth.repository.UserRepository;
 import com.cardtrading.card.entity.Card;
+import com.cardtrading.card.entity.CustomCard;
 import com.cardtrading.card.repository.CardRepository;
+import com.cardtrading.card.repository.CustomCardRepository;
 import com.cardtrading.card.service.ImageStorageService;
 import com.cardtrading.inventory.dto.AddCatalogCardRequest;
 import com.cardtrading.inventory.dto.CustomCardRequest;
@@ -12,6 +14,8 @@ import com.cardtrading.inventory.entity.UserCard;
 import com.cardtrading.inventory.repository.UserCardRepository;
 import com.cardtrading.shared.exception.BusinessRuleException;
 import com.cardtrading.shared.exception.ResourceNotFoundException;
+import com.cardtrading.trade.entity.Trade;
+import com.cardtrading.trade.repository.TradeItemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -20,7 +24,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -31,8 +36,11 @@ public class InventoryService {
     private final UserCardRepository userCardRepository;
     private final UserRepository userRepository;
     private final CardRepository cardRepository;
+    private final CustomCardRepository customCardRepository;
+    private final TradeItemRepository tradeItemRepository;
     private final ImageStorageService imageStorageService;
 
+    @Transactional(readOnly = true)
     public Page<UserCardDto> getUserInventory(UUID userId, Pageable pageable) {
         if (!userRepository.existsById(userId)) {
             throw new ResourceNotFoundException("User not found");
@@ -41,63 +49,29 @@ public class InventoryService {
     }
 
     @Transactional
-    public void addCard(UUID userId, UUID cardId, int quantity, UserCard.AcquisitionSource source) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        Card card = cardRepository.findById(cardId)
-                .orElseThrow(() -> new ResourceNotFoundException("Card not found"));
-
-        userCardRepository.findByUserIdAndCardId(userId, cardId)
-                .ifPresentOrElse(
-                        existing -> {
-                            existing.setQuantity(existing.getQuantity() + quantity);
-                            userCardRepository.save(existing);
-                            log.info("Updated inventory: userId={} cardId={} newQty={}", userId, cardId, existing.getQuantity());
-                        },
-                        () -> {
-                            UserCard userCard = UserCard.builder()
-                                    .user(user)
-                                    .card(card)
-                                    .quantity(quantity)
-                                    .acquiredAt(LocalDateTime.now())
-                                    .acquiredFrom(source)
-                                    .build();
-                            userCardRepository.save(userCard);
-                            log.info("Added to inventory: userId={} cardId={} qty={}", userId, cardId, quantity);
-                        }
-                );
-    }
-
-    @Transactional
-    public void removeCard(UUID userId, UUID cardId, int quantity) {
-        UserCard userCard = userCardRepository.findByUserIdAndCardId(userId, cardId)
-                .orElseThrow(() -> new BusinessRuleException("User does not own this card"));
-
-        int newQuantity = userCard.getQuantity() - quantity;
-        if (newQuantity < 0) {
-            throw new BusinessRuleException("Insufficient card quantity");
-        } else if (newQuantity == 0) {
-            userCardRepository.delete(userCard);
-            log.info("Removed from inventory: userId={} cardId={}", userId, cardId);
-        } else {
-            userCard.setQuantity(newQuantity);
-            userCardRepository.save(userCard);
-            log.info("Decremented inventory: userId={} cardId={} newQty={}", userId, cardId, newQuantity);
-        }
-    }
-
-    @Transactional
     public UserCardDto addCatalogCard(UUID userId, UUID requesterId, AddCatalogCardRequest request) {
         if (!userId.equals(requesterId)) {
             throw new BusinessRuleException("You can only add cards to your own inventory");
         }
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         Card card = cardRepository.findById(request.getCardId())
                 .orElseThrow(() -> new ResourceNotFoundException("Card not found"));
-        if (card.getOwnerId() != null) {
-            throw new BusinessRuleException("Cannot add a custom card from another user's inventory");
-        }
-        addCard(userId, card.getId(), request.getQuantity(), UserCard.AcquisitionSource.MANUAL);
-        UserCard userCard = userCardRepository.findByUserIdAndCardId(userId, card.getId()).orElseThrow();
+
+        UserCard.CardCondition condition = UserCard.CardCondition.valueOf(request.getCondition().toUpperCase());
+
+        UserCard userCard = UserCard.builder()
+                .user(user)
+                .card(card)
+                .quantity(request.getQuantity())
+                .condition(condition)
+                .notes(request.getNotes())
+                .forTrade(false)
+                .forSale(false)
+                .build();
+
+        userCard = userCardRepository.save(userCard);
+        log.info("Card added to inventory: userId={} cardId={} qty={}", userId, card.getId(), request.getQuantity());
         return toDto(userCard);
     }
 
@@ -109,44 +83,134 @@ public class InventoryService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        String imageUrl = (image != null && !image.isEmpty()) ? imageStorageService.store(image) : null;
+        Card.Rarity rarity = Card.Rarity.valueOf(request.getRarity().toUpperCase());
+        UserCard.CardCondition condition = UserCard.CardCondition.valueOf(request.getCondition().toUpperCase());
 
-        Card card = Card.builder()
+        String imageUrl = null;
+        if (image != null && !image.isEmpty()) {
+            imageUrl = imageStorageService.store(image);
+        }
+
+        CustomCard customCard = CustomCard.builder()
+                .owner(user)
                 .name(request.getName())
-                .description(request.getDescription())
-                .rarity(Card.Rarity.valueOf(request.getRarity()))
-                .cardType(Card.CardType.valueOf(request.getCardType()))
-                .edition(request.getEdition())
+                .cardNumber(request.getCardNumber())
+                .rarity(rarity)
+                .attributes(request.getAttributes())
                 .imageUrl(imageUrl)
-                .ownerId(userId)
+                .notes(request.getNotes())
                 .build();
-        card = cardRepository.save(card);
+        customCard = customCardRepository.save(customCard);
 
         UserCard userCard = UserCard.builder()
                 .user(user)
-                .card(card)
+                .customCard(customCard)
                 .quantity(request.getQuantity())
-                .acquiredFrom(UserCard.AcquisitionSource.MANUAL)
+                .condition(condition)
+                .forTrade(false)
+                .forSale(false)
                 .build();
         userCard = userCardRepository.save(userCard);
-        log.info("Custom card added: userId={} cardId={}", userId, card.getId());
+
+        log.info("Custom card added to inventory: userId={} customCardId={}", userId, customCard.getId());
         return toDto(userCard);
     }
 
+    @Transactional
+    public void transferUserCard(UUID userCardId, UUID toUserId, int quantity) {
+        UserCard source = userCardRepository.findById(userCardId)
+                .orElseThrow(() -> new ResourceNotFoundException("User card not found"));
+        User newOwner = userRepository.findById(toUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (quantity == source.getQuantity()) {
+            // Transfer the whole entry to the new owner
+            source.setUser(newOwner);
+            source.setForTrade(false);
+            source.setForSale(false);
+            userCardRepository.save(source);
+        } else {
+            // Partial transfer: reduce source quantity, add to receiver's inventory
+            source.setQuantity(source.getQuantity() - quantity);
+            userCardRepository.save(source);
+
+            UUID catalogCardId = source.getCard() != null ? source.getCard().getId() : null;
+            UUID customCardId = source.getCustomCard() != null ? source.getCustomCard().getId() : null;
+
+            Optional<UserCard> existing = catalogCardId != null
+                    ? userCardRepository.findByUserIdAndCardIdAndCondition(toUserId, catalogCardId, source.getCondition())
+                    : userCardRepository.findByUserIdAndCustomCardIdAndCondition(toUserId, customCardId, source.getCondition());
+
+            existing.ifPresentOrElse(
+                            found -> {
+                                found.setQuantity(found.getQuantity() + quantity);
+                                userCardRepository.save(found);
+                            },
+                            () -> {
+                                UserCard received = UserCard.builder()
+                                        .user(newOwner)
+                                        .card(source.getCard())
+                                        .customCard(source.getCustomCard())
+                                        .quantity(quantity)
+                                        .condition(source.getCondition())
+                                        .forTrade(false)
+                                        .forSale(false)
+                                        .build();
+                                userCardRepository.save(received);
+                            }
+                    );
+        }
+
+        log.info("UserCard transferred: userCardId={} toUserId={} quantity={}", userCardId, toUserId, quantity);
+    }
+
+    @Transactional
+    public void removeUserCard(UUID userCardId, UUID requesterId) {
+        UserCard userCard = userCardRepository.findByIdAndUserId(userCardId, requesterId)
+                .orElseThrow(() -> new ResourceNotFoundException("Card not found in your inventory"));
+
+        if (tradeItemRepository.existsByUserCardIdAndTradeStatusIn(userCardId,
+                List.of(Trade.TradeStatus.PENDING, Trade.TradeStatus.ACCEPTED))) {
+            throw new BusinessRuleException("Cannot remove a card that is part of an active trade");
+        }
+
+        userCardRepository.delete(userCard);
+        log.info("UserCard removed: userCardId={} userId={}", userCardId, requesterId);
+    }
+
     private UserCardDto toDto(UserCard userCard) {
-        Card card = userCard.getCard();
-        return UserCardDto.builder()
-                .cardId(card.getId())
-                .cardName(card.getName())
-                .description(card.getDescription())
-                .rarity(card.getRarity().name())
-                .cardType(card.getCardType().name())
-                .edition(card.getEdition())
-                .imageUrl(card.getImageUrl())
-                .isCustom(card.getOwnerId() != null)
+        UserCardDto.UserCardDtoBuilder builder = UserCardDto.builder()
+                .userCardId(userCard.getId())
                 .quantity(userCard.getQuantity())
-                .acquiredAt(userCard.getAcquiredAt())
-                .acquiredFrom(userCard.getAcquiredFrom().name())
-                .build();
+                .condition(userCard.getCondition().name())
+                .forTrade(userCard.isForTrade())
+                .forSale(userCard.isForSale())
+                .notes(userCard.getNotes())
+                .acquiredAt(userCard.getAcquiredAt());
+
+        if (userCard.getCustomCard() != null) {
+            CustomCard cc = userCard.getCustomCard();
+            builder.customCardId(cc.getId())
+                    .custom(true)
+                    .cardName(cc.getName())
+                    .cardNumber(cc.getCardNumber())
+                    .rarity(cc.getRarity().name())
+                    .imageUrl(cc.getImageUrl())
+                    .imageSmallUrl(cc.getImageSmallUrl());
+        } else {
+            Card card = userCard.getCard();
+            builder.cardId(card.getId())
+                    .custom(false)
+                    .cardName(card.getName())
+                    .cardNumber(card.getCardNumber())
+                    .rarity(card.getRarity().name())
+                    .imageUrl(card.getImageUrl())
+                    .imageSmallUrl(card.getImageSmallUrl())
+                    .marketPrice(card.getMarketPrice())
+                    .setName(card.getSet().getName())
+                    .gameName(card.getSet().getGame().getName());
+        }
+
+        return builder.build();
     }
 }

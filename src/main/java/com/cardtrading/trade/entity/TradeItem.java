@@ -1,6 +1,7 @@
 package com.cardtrading.trade.entity;
 
-import com.cardtrading.card.entity.Card;
+import com.cardtrading.auth.entity.User;
+import com.cardtrading.inventory.entity.UserCard;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -25,15 +26,15 @@ public class TradeItem {
     private Trade trade;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "card_id", nullable = false)
-    private Card card;
+    @JoinColumn(name = "user_card_id", nullable = false)
+    private UserCard userCard;
 
-    @Column(nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "from_user_id", nullable = false)
+    private User fromUser;
+
+    @Column(name = "quantity", nullable = false)
     private int quantity;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
-    private TradeSide side;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -41,9 +42,5 @@ public class TradeItem {
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
-    }
-
-    public enum TradeSide {
-        OFFER, REQUEST
     }
 }

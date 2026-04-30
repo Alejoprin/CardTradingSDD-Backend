@@ -27,9 +27,7 @@ public class TradeExpiryScheduler {
         LocalDateTime expiryThreshold = LocalDateTime.now().minusDays(7);
         List<Trade> expiredTrades = tradeRepository.findExpiredPendingTrades(expiryThreshold);
 
-        if (expiredTrades.isEmpty()) {
-            return;
-        }
+        if (expiredTrades.isEmpty()) return;
 
         log.info("Expiring {} pending trades older than 7 days", expiredTrades.size());
 
@@ -40,7 +38,7 @@ public class TradeExpiryScheduler {
             eventPublisher.publish("trading.trade.cancelled", trade.getId().toString(),
                     TradeCancelledEvent.builder()
                             .tradeId(trade.getId())
-                            .cancelledBy(null) // system-cancelled
+                            .cancelledBy(null)
                             .timestamp(LocalDateTime.now())
                             .build());
 

@@ -2,6 +2,7 @@ package com.cardtrading.inventory.entity;
 
 import com.cardtrading.auth.entity.User;
 import com.cardtrading.card.entity.Card;
+import com.cardtrading.card.entity.CustomCard;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -9,9 +10,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "user_cards", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"user_id", "card_id"})
-})
+@Table(name = "user_cards")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -28,18 +27,35 @@ public class UserCard {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "card_id", nullable = false)
+    @JoinColumn(name = "card_id")
     private Card card;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "custom_card_id")
+    private CustomCard customCard;
+
     @Column(nullable = false)
-    private int quantity;
+    @Builder.Default
+    private int quantity = 1;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private CardCondition condition = CardCondition.NEAR_MINT;
+
+    @Column(name = "is_for_trade", nullable = false)
+    @Builder.Default
+    private boolean forTrade = false;
+
+    @Column(name = "is_for_sale", nullable = false)
+    @Builder.Default
+    private boolean forSale = false;
+
+    @Column(columnDefinition = "TEXT")
+    private String notes;
 
     @Column(name = "acquired_at", nullable = false)
     private LocalDateTime acquiredAt;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "acquired_from", nullable = false, length = 20)
-    private AcquisitionSource acquiredFrom;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -61,7 +77,7 @@ public class UserCard {
         updatedAt = LocalDateTime.now();
     }
 
-    public enum AcquisitionSource {
-        SYSTEM, TRADE, PURCHASE, MANUAL
+    public enum CardCondition {
+        MINT, NEAR_MINT, EXCELLENT, GOOD, PLAYED, POOR
     }
 }

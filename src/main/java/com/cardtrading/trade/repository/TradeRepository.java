@@ -10,28 +10,32 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface TradeRepository extends JpaRepository<Trade, UUID> {
 
-    Page<Trade> findByOffererId(UUID offererId, Pageable pageable);
+    @Query("SELECT t FROM Trade t WHERE (t.proposer.id = :userId OR t.receiver.id = :userId)")
+    Page<Trade> findByProposerIdOrReceiverId(@Param("userId") UUID userId, Pageable pageable);
 
-    Page<Trade> findByReceiverId(UUID receiverId, Pageable pageable);
-
-    @Query("SELECT t FROM Trade t WHERE (t.offerer.id = :userId OR t.receiver.id = :userId)")
-    Page<Trade> findByOffererIdOrReceiverId(@Param("userId") UUID userId, Pageable pageable);
-
-    @Query("SELECT t FROM Trade t WHERE (t.offerer.id = :userId OR t.receiver.id = :userId) AND t.status = :status")
-    Page<Trade> findByOffererIdOrReceiverIdAndStatus(@Param("userId") UUID userId,
+    @Query("SELECT t FROM Trade t WHERE (t.proposer.id = :userId OR t.receiver.id = :userId) AND t.status = :status")
+    Page<Trade> findByProposerIdOrReceiverIdAndStatus(@Param("userId") UUID userId,
                                                       @Param("status") Trade.TradeStatus status,
                                                       Pageable pageable);
 
-    long countByOffererIdAndCreatedAtAfter(UUID offererId, LocalDateTime after);
+    long countByProposerIdAndCreatedAtAfter(UUID proposerId, LocalDateTime after);
 
-    Optional<Trade> findByIdempotencyKey(String idempotencyKey);
+    Page<Trade> findByStatus(Trade.TradeStatus status, Pageable pageable);
 
-    @Query("SELECT t FROM Trade t WHERE t.status = 'PENDING' AND t.createdAt < :expireBefore")
+    long countByStatus(Trade.TradeStatus status);
+
+    @Query("SELECT t FROM Trade t WHERE t.status = 'PENDING' AND t.proposedAt < :expireBefore")
     List<Trade> findExpiredPendingTrades(@Param("expireBefore") LocalDateTime expireBefore);
+
+    @Query("SELECT t FROM Trade t WHERE t.status = 'ACCEPTED' AND t.respondedAt < :stuckBefore")
+    List<Trade> findStuckAcceptedTrades(@Param("stuckBefore") LocalDateTime stuckBefore);
+
+    @Query("SELECT DISTINCT t FROM Trade t JOIN t.items i WHERE t.status = 'PENDING' AND i.userCard.id = :userCardId AND t.id <> :excludeTradeId")
+    List<Trade> findPendingTradesByUserCardIdExcluding(@Param("userCardId") UUID userCardId,
+                                                       @Param("excludeTradeId") UUID excludeTradeId);
 }

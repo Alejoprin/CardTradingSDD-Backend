@@ -7,14 +7,14 @@ spring:
     name: card-trading-backend
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/cardtrading
-    username: cardtrading
-    password: cardtrading
+    url: jdbc:postgresql://ep-shiny-moon-abm8gkhe-pooler.eu-west-2.aws.neon.tech/cardtrading-db?sslmode=require
+    username: neondb_owner
+    password: npg_uGLbABK5mz9t
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none
     show-sql: true
     properties:
       hibernate:

@@ -36,16 +36,13 @@ public class AdminService {
         return userRepository.findAll(pageable).map(this::toAdminUserResponse);
     }
 
+    @Transactional(readOnly = true)
     public Page<TradeResponse> listAllTrades(String status, Pageable pageable) {
-        Page<Trade> trades;
         if (status != null && !status.isBlank()) {
-            Trade.TradeStatus tradeStatus = Trade.TradeStatus.valueOf(status);
-            // For admin, we need a simple query - reuse findAll with filter
-            trades = tradeRepository.findAll(pageable);
-        } else {
-            trades = tradeRepository.findAll(pageable);
+            Trade.TradeStatus tradeStatus = Trade.TradeStatus.valueOf(status.toUpperCase());
+            return tradeRepository.findByStatus(tradeStatus, pageable).map(this::toTradeResponse);
         }
-        return trades.map(this::toTradeResponse);
+        return tradeRepository.findAll(pageable).map(this::toTradeResponse);
     }
 
     @Transactional
@@ -73,21 +70,18 @@ public class AdminService {
 
     public StatsResponse getStats() {
         long totalUsers = userRepository.count();
-        long bannedUsers = userRepository.findAll().stream().filter(User::isBanned).count();
-        long activeUsers = totalUsers - bannedUsers;
+        long bannedUsers = userRepository.countByBannedTrue();
         long totalCards = cardRepository.count();
         long totalTrades = tradeRepository.count();
 
         Map<String, Long> tradesByStatus = new LinkedHashMap<>();
-        for (Trade.TradeStatus status : Trade.TradeStatus.values()) {
-            tradesByStatus.put(status.name(), 0L);
+        for (Trade.TradeStatus s : Trade.TradeStatus.values()) {
+            tradesByStatus.put(s.name(), tradeRepository.countByStatus(s));
         }
-        tradeRepository.findAll().forEach(t ->
-                tradesByStatus.merge(t.getStatus().name(), 1L, Long::sum));
 
         return StatsResponse.builder()
                 .totalUsers(totalUsers)
-                .activeUsers(activeUsers)
+                .activeUsers(totalUsers - bannedUsers)
                 .bannedUsers(bannedUsers)
                 .totalCards(totalCards)
                 .totalTrades(totalTrades)
@@ -111,11 +105,12 @@ public class AdminService {
     private TradeResponse toTradeResponse(Trade trade) {
         return TradeResponse.builder()
                 .id(trade.getId())
-                .offererId(trade.getOfferer().getId())
-                .offererUsername(trade.getOfferer().getUsername())
+                .proposerId(trade.getProposer().getId())
+                .proposerUsername(trade.getProposer().getUsername())
                 .receiverId(trade.getReceiver().getId())
                 .receiverUsername(trade.getReceiver().getUsername())
                 .status(trade.getStatus().name())
+                .proposedAt(trade.getProposedAt())
                 .createdAt(trade.getCreatedAt())
                 .updatedAt(trade.getUpdatedAt())
                 .build();

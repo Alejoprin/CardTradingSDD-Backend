@@ -29,19 +29,16 @@ public class CardController {
     public ResponseEntity<Page<CardSummaryResponse>> listCards(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String rarity,
-            @RequestParam(required = false) String cardType,
-            @RequestParam(required = false) String edition,
+            @RequestParam(required = false) UUID setId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, Math.min(size, 100));
-        Page<CardSummaryResponse> cards = cardService.listCards(search, rarity, cardType, edition, pageable);
-        return ResponseEntity.ok(cards);
+        return ResponseEntity.ok(cardService.listCards(search, rarity, setId, pageable));
     }
 
     @GetMapping("/{cardId}")
     public ResponseEntity<CardDetailResponse> getCard(@PathVariable UUID cardId) {
-        CardDetailResponse card = cardService.getCardById(cardId);
-        return ResponseEntity.ok(card);
+        return ResponseEntity.ok(cardService.getCardById(cardId));
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)

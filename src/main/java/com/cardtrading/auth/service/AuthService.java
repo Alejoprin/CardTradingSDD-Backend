@@ -124,6 +124,10 @@ public class AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UnauthorizedException("Refresh token is invalid or expired"));
 
+        if (user.isBanned()) {
+            throw new UnauthorizedException("Account has been suspended");
+        }
+
         String newAccessToken = jwtService.generateAccessToken(userId, email, user.getRole().name());
 
         return TokenResponse.builder()

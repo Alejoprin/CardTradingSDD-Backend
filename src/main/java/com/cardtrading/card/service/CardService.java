@@ -4,7 +4,9 @@ import com.cardtrading.card.dto.CardDetailResponse;
 import com.cardtrading.card.dto.CardRequest;
 import com.cardtrading.card.dto.CardSummaryResponse;
 import com.cardtrading.card.entity.Card;
+import com.cardtrading.card.entity.CardSet;
 import com.cardtrading.card.repository.CardRepository;
+import com.cardtrading.card.repository.CardSetRepository;
 import com.cardtrading.shared.exception.BusinessRuleException;
 import com.cardtrading.shared.exception.ResourceNotFoundException;
 import jakarta.persistence.criteria.Predicate;
@@ -19,7 +21,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -30,15 +31,18 @@ import java.util.UUID;
 public class CardService {
 
     private final CardRepository cardRepository;
+    private final CardSetRepository cardSetRepository;
     private final ImageStorageService imageStorageService;
 
-    @Cacheable(value = "card:catalog", key = "#search + '-' + #rarity + '-' + #cardType + '-' + #edition + '-' + #pageable.pageNumber + '-' + #pageable.pageSize")
-    public Page<CardSummaryResponse> listCards(String search, String rarity, String cardType, String edition, Pageable pageable) {
-        Specification<Card> spec = buildSpecification(search, rarity, cardType, edition);
+    @Cacheable(value = "card:catalog", key = "#search + '-' + #rarity + '-' + #setId + '-' + #pageable.pageNumber + '-' + #pageable.pageSize")
+    @Transactional(readOnly = true)
+    public Page<CardSummaryResponse> listCards(String search, String rarity, UUID setId, Pageable pageable) {
+        Specification<Card> spec = buildSpecification(search, rarity, setId);
         return cardRepository.findAll(spec, pageable).map(this::toSummary);
     }
 
     @Cacheable(value = "card:detail", key = "#cardId")
+    @Transactional(readOnly = true)
     public CardDetailResponse getCardById(UUID cardId) {
         Card card = cardRepository.findById(cardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Card not found"));
@@ -48,21 +52,23 @@ public class CardService {
     @Transactional
     @CacheEvict(value = {"card:catalog", "card:detail"}, allEntries = true)
     public CardDetailResponse createCard(CardRequest request, MultipartFile image) {
-        if (cardRepository.existsByName(request.getName())) {
-            throw new BusinessRuleException("A card with that name already exists");
+        CardSet set = cardSetRepository.findById(request.getSetId())
+                .orElseThrow(() -> new ResourceNotFoundException("Card set not found"));
+
+        if (cardRepository.existsByNameAndSetId(request.getName(), set.getId())) {
+            throw new BusinessRuleException("A card with that name already exists in this set");
         }
 
-        String imageUrl = (image != null && !image.isEmpty())
-                ? imageStorageService.store(image)
-                : request.getImageUrl();
+        String imageUrl = (image != null && !image.isEmpty()) ? imageStorageService.store(image) : null;
 
         Card card = Card.builder()
+                .set(set)
                 .name(request.getName())
-                .description(request.getDescription())
+                .cardNumber(request.getCardNumber())
                 .rarity(Card.Rarity.valueOf(request.getRarity()))
-                .cardType(Card.CardType.valueOf(request.getCardType()))
-                .edition(request.getEdition())
+                .attributes(request.getAttributes())
                 .imageUrl(imageUrl)
+                .marketPrice(request.getMarketPrice())
                 .build();
 
         card = cardRepository.save(card);
@@ -76,22 +82,20 @@ public class CardService {
         Card card = cardRepository.findById(cardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Card not found"));
 
-        if (request.getName() != null && !request.getName().equals(card.getName())) {
-            if (cardRepository.existsByName(request.getName())) {
-                throw new BusinessRuleException("A card with that name already exists");
-            }
-            card.setName(request.getName());
+        if (request.getSetId() != null) {
+            CardSet set = cardSetRepository.findById(request.getSetId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Card set not found"));
+            card.setSet(set);
         }
-        if (request.getDescription() != null) card.setDescription(request.getDescription());
+        if (request.getName() != null) card.setName(request.getName());
+        if (request.getCardNumber() != null) card.setCardNumber(request.getCardNumber());
         if (request.getRarity() != null) card.setRarity(Card.Rarity.valueOf(request.getRarity()));
-        if (request.getCardType() != null) card.setCardType(Card.CardType.valueOf(request.getCardType()));
-        if (request.getEdition() != null) card.setEdition(request.getEdition());
+        if (request.getAttributes() != null) card.setAttributes(request.getAttributes());
+        if (request.getMarketPrice() != null) card.setMarketPrice(request.getMarketPrice());
 
         if (image != null && !image.isEmpty()) {
             imageStorageService.delete(card.getImageUrl());
             card.setImageUrl(imageStorageService.store(image));
-        } else if (request.getImageUrl() != null) {
-            card.setImageUrl(request.getImageUrl());
         }
 
         card = cardRepository.save(card);
@@ -104,28 +108,23 @@ public class CardService {
     public void deleteCard(UUID cardId) {
         Card card = cardRepository.findById(cardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Card not found"));
-        card.setDeletedAt(LocalDateTime.now());
-        cardRepository.save(card);
-        log.info("Card soft-deleted: cardId={}", cardId);
+        imageStorageService.delete(card.getImageUrl());
+        cardRepository.delete(card);
+        log.info("Card deleted: cardId={}", cardId);
     }
 
-    private Specification<Card> buildSpecification(String search, String rarity, String cardType, String edition) {
+    private Specification<Card> buildSpecification(String search, String rarity, UUID setId) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-
-            predicates.add(cb.isNull(root.get("ownerId")));
 
             if (search != null && !search.isBlank()) {
                 predicates.add(cb.like(cb.lower(root.get("name")), "%" + search.toLowerCase() + "%"));
             }
             if (rarity != null && !rarity.isBlank()) {
-                predicates.add(cb.equal(root.get("rarity"), Card.Rarity.valueOf(rarity)));
+                predicates.add(cb.equal(root.get("rarity"), Card.Rarity.valueOf(rarity.toUpperCase())));
             }
-            if (cardType != null && !cardType.isBlank()) {
-                predicates.add(cb.equal(root.get("cardType"), Card.CardType.valueOf(cardType)));
-            }
-            if (edition != null && !edition.isBlank()) {
-                predicates.add(cb.equal(root.get("edition"), edition));
+            if (setId != null) {
+                predicates.add(cb.equal(root.get("set").get("id"), setId));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));
@@ -135,23 +134,34 @@ public class CardService {
     private CardSummaryResponse toSummary(Card card) {
         return CardSummaryResponse.builder()
                 .id(card.getId())
+                .setId(card.getSet().getId())
+                .setName(card.getSet().getName())
+                .gameName(card.getSet().getGame().getName())
                 .name(card.getName())
+                .cardNumber(card.getCardNumber())
                 .rarity(card.getRarity().name())
-                .cardType(card.getCardType().name())
-                .edition(card.getEdition())
                 .imageUrl(card.getImageUrl())
+                .imageSmallUrl(card.getImageSmallUrl())
+                .marketPrice(card.getMarketPrice())
                 .build();
     }
 
     private CardDetailResponse toDetail(Card card) {
         return CardDetailResponse.builder()
                 .id(card.getId())
+                .setId(card.getSet().getId())
+                .setName(card.getSet().getName())
+                .setCode(card.getSet().getCode())
+                .gameId(card.getSet().getGame().getId())
+                .gameName(card.getSet().getGame().getName())
                 .name(card.getName())
-                .description(card.getDescription())
+                .cardNumber(card.getCardNumber())
                 .rarity(card.getRarity().name())
-                .cardType(card.getCardType().name())
-                .edition(card.getEdition())
+                .attributes(card.getAttributes())
                 .imageUrl(card.getImageUrl())
+                .imageSmallUrl(card.getImageSmallUrl())
+                .marketPrice(card.getMarketPrice())
+                .lastPriceUpdate(card.getLastPriceUpdate())
                 .createdAt(card.getCreatedAt())
                 .updatedAt(card.getUpdatedAt())
                 .build();
