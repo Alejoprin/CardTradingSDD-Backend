@@ -67,9 +67,9 @@ spring:
     suffix: .html
 
 app:
-  upload:
-    dir: ./uploads
-    base-url: /uploads
+  firebase:
+    bucket: ${FIREBASE_BUCKET}
+    credentials-path: ${FIREBASE_CREDENTIALS_PATH:./firebase-service-account.json}
 
   jwt:
     secret: ${JWT_SECRET:dev-secret-key}

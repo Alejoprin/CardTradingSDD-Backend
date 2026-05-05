@@ -1,15 +1,16 @@
 package com.cardtrading.card.service;
 
 import com.cardtrading.shared.exception.BusinessRuleException;
+import com.google.cloud.storage.Acl;
+import com.google.cloud.storage.BlobId;
+import com.google.cloud.storage.BlobInfo;
+import com.google.firebase.cloud.StorageClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 
@@ -19,12 +20,10 @@ public class ImageStorageService {
 
     private static final List<String> ALLOWED_TYPES = List.of("image/jpeg", "image/png", "image/webp");
     private static final long MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+    private static final String GCS_BASE_URL = "https://storage.googleapis.com/";
 
-    @Value("${app.upload.dir:./uploads}")
-    private String uploadDir;
-
-    @Value("${app.upload.base-url:/uploads}")
-    private String baseUrl;
+    @Value("${app.firebase.bucket}")
+    private String bucket;
 
     public String store(MultipartFile file) {
         if (file == null || file.isEmpty()) {
@@ -38,30 +37,36 @@ public class ImageStorageService {
         }
 
         String extension = getExtension(file.getOriginalFilename());
-        String filename = UUID.randomUUID() + "." + extension;
+        String blobName = "cards/" + UUID.randomUUID() + "." + extension;
 
         try {
-            Path cardsDir = Paths.get(uploadDir, "cards");
-            Files.createDirectories(cardsDir);
-            file.transferTo(cardsDir.resolve(filename).toFile());
+            com.google.cloud.storage.Storage storage = StorageClient.getInstance().bucket().getStorage();
+            BlobInfo blobInfo = BlobInfo.newBuilder(BlobId.of(bucket, blobName))
+                    .setContentType(file.getContentType())
+                    .setAcl(List.of(Acl.of(Acl.User.ofAllUsers(), Acl.Role.READER)))
+                    .build();
+            storage.create(blobInfo, file.getBytes());
         } catch (IOException e) {
-            log.error("Failed to store image: {}", e.getMessage());
-            throw new BusinessRuleException("Could not store image file");
+            log.error("Failed to upload image to Firebase Storage: {}", e.getMessage());
+            throw new BusinessRuleException("Could not upload image file");
         }
 
-        return baseUrl + "/cards/" + filename;
+        String url = GCS_BASE_URL + bucket + "/" + blobName;
+        log.info("Image uploaded: {}", url);
+        return url;
     }
 
     public void delete(String imageUrl) {
-        if (imageUrl == null || !imageUrl.startsWith(baseUrl)) {
-            return;
-        }
-        String relativePath = imageUrl.substring(baseUrl.length());
-        Path filePath = Paths.get(uploadDir, relativePath);
+        if (imageUrl == null) return;
+        String prefix = GCS_BASE_URL + bucket + "/";
+        if (!imageUrl.startsWith(prefix)) return;
+
+        String blobName = imageUrl.substring(prefix.length());
         try {
-            Files.deleteIfExists(filePath);
-        } catch (IOException e) {
-            log.warn("Could not delete image file: {}", filePath);
+            StorageClient.getInstance().bucket().getStorage()
+                    .delete(BlobId.of(bucket, blobName));
+        } catch (Exception e) {
+            log.warn("Could not delete image from Firebase Storage: {}", blobName);
         }
     }
 

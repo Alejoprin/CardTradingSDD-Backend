@@ -8,6 +8,6 @@ target/
 *.log
 .env
 docker-compose.yml
-README.md
+README-Back.md
 .claude/
 specs/
