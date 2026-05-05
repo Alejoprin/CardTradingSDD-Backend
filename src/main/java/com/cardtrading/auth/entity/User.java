@@ -2,7 +2,9 @@ package com.cardtrading.auth.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.Where;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -31,7 +33,8 @@ public class User {
     private String password;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 20, columnDefinition = "user_role")
+    @JdbcType(PostgreSQLEnumJdbcType.class)
     @Builder.Default
     private Role role = Role.USER;
 

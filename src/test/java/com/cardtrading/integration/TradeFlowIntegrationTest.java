@@ -120,11 +120,16 @@ class TradeFlowIntegrationTest {
         seedInventory(userB, cardB, 2);
 
         // Create trade: A offers Dragon Sword, requests Shield Wall
-        CreateTradeRequest tradeRequest = CreateTradeRequest.builder()
-                .receiverId(userB)
-                .offeredCards(List.of(TradeItemRequest.builder().cardId(cardA).quantity(1).build()))
-                .requestedCards(List.of(TradeItemRequest.builder().cardId(cardB).quantity(1).build()))
-                .build();
+        TradeItemRequest offeredItem = new TradeItemRequest();
+        offeredItem.setUserCardId(cardA);
+        offeredItem.setQuantity(1);
+        TradeItemRequest requestedItem = new TradeItemRequest();
+        requestedItem.setUserCardId(cardB);
+        requestedItem.setQuantity(1);
+        CreateTradeRequest tradeRequest = new CreateTradeRequest();
+        tradeRequest.setReceiverId(userB);
+        tradeRequest.setOfferedCards(List.of(offeredItem));
+        tradeRequest.setRequestedCards(List.of(requestedItem));
 
         MvcResult createResult = mockMvc.perform(post("/api/v1/trades")
                         .header("Authorization", "Bearer " + tokenA)

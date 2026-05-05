@@ -3,6 +3,8 @@ package com.cardtrading.trade.entity;
 import com.cardtrading.auth.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -31,7 +33,8 @@ public class Trade {
     private User receiver;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 20, columnDefinition = "trade_status")
+    @JdbcType(PostgreSQLEnumJdbcType.class)
     @Builder.Default
     private TradeStatus status = TradeStatus.PENDING;
 

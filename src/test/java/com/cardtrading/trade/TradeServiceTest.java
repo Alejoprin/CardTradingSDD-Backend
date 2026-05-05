@@ -64,8 +64,7 @@ class TradeServiceTest {
                 .password("enc").role(User.Role.USER).build();
         receiver = User.builder().id(receiverId).username("receiver").email("receiver@test.com")
                 .password("enc").role(User.Role.USER).build();
-        card = Card.builder().id(cardId).name("Dragon").rarity(Card.Rarity.RARE)
-                .cardType(Card.CardType.MONSTER).build();
+        card = Card.builder().id(cardId).name("Dragon").rarity(Card.Rarity.RARE).build();
     }
 
     @Nested
@@ -75,13 +74,15 @@ class TradeServiceTest {
         @Test
         @DisplayName("should throw on self-trade")
         void shouldThrowOnSelfTrade() {
-            CreateTradeRequest request = CreateTradeRequest.builder()
-                    .receiverId(offererId)
-                    .offeredCards(List.of(TradeItemRequest.builder().cardId(cardId).quantity(1).build()))
-                    .requestedCards(List.of(TradeItemRequest.builder().cardId(cardId).quantity(1).build()))
-                    .build();
+            TradeItemRequest item = new TradeItemRequest();
+            item.setUserCardId(cardId);
+            item.setQuantity(1);
+            CreateTradeRequest request = new CreateTradeRequest();
+            request.setReceiverId(offererId);
+            request.setOfferedCards(List.of(item));
+            request.setRequestedCards(List.of(item));
 
-            assertThatThrownBy(() -> tradeService.createTrade(offererId, request, null))
+            assertThatThrownBy(() -> tradeService.createTrade(offererId, request))
                     .isInstanceOf(BusinessRuleException.class)
                     .hasMessage("You cannot trade with yourself");
         }
@@ -91,17 +92,25 @@ class TradeServiceTest {
         void shouldThrowOnTooManyItems() {
             List<TradeItemRequest> offered = new ArrayList<>();
             for (int i = 0; i < 11; i++) {
-                offered.add(TradeItemRequest.builder().cardId(UUID.randomUUID()).quantity(1).build());
+                TradeItemRequest item = new TradeItemRequest();
+                item.setUserCardId(UUID.randomUUID());
+                item.setQuantity(1);
+                offered.add(item);
             }
             List<TradeItemRequest> requested = new ArrayList<>();
             for (int i = 0; i < 11; i++) {
-                requested.add(TradeItemRequest.builder().cardId(UUID.randomUUID()).quantity(1).build());
+                TradeItemRequest item = new TradeItemRequest();
+                item.setUserCardId(UUID.randomUUID());
+                item.setQuantity(1);
+                requested.add(item);
             }
 
-            CreateTradeRequest request = CreateTradeRequest.builder()
-                    .receiverId(receiverId).offeredCards(offered).requestedCards(requested).build();
+            CreateTradeRequest request = new CreateTradeRequest();
+            request.setReceiverId(receiverId);
+            request.setOfferedCards(offered);
+            request.setRequestedCards(requested);
 
-            assertThatThrownBy(() -> tradeService.createTrade(offererId, request, null))
+            assertThatThrownBy(() -> tradeService.createTrade(offererId, request))
                     .isInstanceOf(BusinessRuleException.class)
                     .hasMessageContaining("20 items");
         }
@@ -109,15 +118,17 @@ class TradeServiceTest {
         @Test
         @DisplayName("should throw on daily limit exceeded")
         void shouldThrowOnDailyLimit() {
-            CreateTradeRequest request = CreateTradeRequest.builder()
-                    .receiverId(receiverId)
-                    .offeredCards(List.of(TradeItemRequest.builder().cardId(cardId).quantity(1).build()))
-                    .requestedCards(List.of(TradeItemRequest.builder().cardId(cardId).quantity(1).build()))
-                    .build();
+            TradeItemRequest item = new TradeItemRequest();
+            item.setUserCardId(cardId);
+            item.setQuantity(1);
+            CreateTradeRequest request = new CreateTradeRequest();
+            request.setReceiverId(receiverId);
+            request.setOfferedCards(List.of(item));
+            request.setRequestedCards(List.of(item));
 
-            when(tradeRepository.countByOffererIdAndCreatedAtAfter(eq(offererId), any())).thenReturn(50L);
+            when(tradeRepository.countByProposerIdAndCreatedAtAfter(eq(offererId), any())).thenReturn(50L);
 
-            assertThatThrownBy(() -> tradeService.createTrade(offererId, request, null))
+            assertThatThrownBy(() -> tradeService.createTrade(offererId, request))
                     .isInstanceOf(BusinessRuleException.class)
                     .hasMessageContaining("Daily trade limit");
         }
@@ -130,7 +141,7 @@ class TradeServiceTest {
         @Test
         @DisplayName("should accept pending trade by receiver")
         void shouldAccept() {
-            Trade trade = Trade.builder().id(UUID.randomUUID()).offerer(offerer).receiver(receiver)
+            Trade trade = Trade.builder().id(UUID.randomUUID()).proposer(offerer).receiver(receiver)
                     .status(Trade.TradeStatus.PENDING).items(new ArrayList<>()).build();
             when(tradeRepository.findById(trade.getId())).thenReturn(Optional.of(trade));
             when(tradeRepository.save(any())).thenAnswer(i -> i.getArgument(0));
@@ -144,7 +155,7 @@ class TradeServiceTest {
         @Test
         @DisplayName("should throw when caller is not receiver")
         void shouldThrowNotReceiver() {
-            Trade trade = Trade.builder().id(UUID.randomUUID()).offerer(offerer).receiver(receiver)
+            Trade trade = Trade.builder().id(UUID.randomUUID()).proposer(offerer).receiver(receiver)
                     .status(Trade.TradeStatus.PENDING).items(new ArrayList<>()).build();
             when(tradeRepository.findById(trade.getId())).thenReturn(Optional.of(trade));
 
@@ -155,7 +166,7 @@ class TradeServiceTest {
         @Test
         @DisplayName("should throw when trade is not PENDING")
         void shouldThrowNotPending() {
-            Trade trade = Trade.builder().id(UUID.randomUUID()).offerer(offerer).receiver(receiver)
+            Trade trade = Trade.builder().id(UUID.randomUUID()).proposer(offerer).receiver(receiver)
                     .status(Trade.TradeStatus.CANCELLED).items(new ArrayList<>()).build();
             when(tradeRepository.findById(trade.getId())).thenReturn(Optional.of(trade));
 
@@ -171,7 +182,7 @@ class TradeServiceTest {
         @Test
         @DisplayName("should reject pending trade by receiver")
         void shouldReject() {
-            Trade trade = Trade.builder().id(UUID.randomUUID()).offerer(offerer).receiver(receiver)
+            Trade trade = Trade.builder().id(UUID.randomUUID()).proposer(offerer).receiver(receiver)
                     .status(Trade.TradeStatus.PENDING).items(new ArrayList<>()).build();
             when(tradeRepository.findById(trade.getId())).thenReturn(Optional.of(trade));
             when(tradeRepository.save(any())).thenAnswer(i -> i.getArgument(0));
@@ -189,7 +200,7 @@ class TradeServiceTest {
         @Test
         @DisplayName("should cancel pending trade by offerer")
         void shouldCancel() {
-            Trade trade = Trade.builder().id(UUID.randomUUID()).offerer(offerer).receiver(receiver)
+            Trade trade = Trade.builder().id(UUID.randomUUID()).proposer(offerer).receiver(receiver)
                     .status(Trade.TradeStatus.PENDING).items(new ArrayList<>()).build();
             when(tradeRepository.findById(trade.getId())).thenReturn(Optional.of(trade));
             when(tradeRepository.save(any())).thenAnswer(i -> i.getArgument(0));
@@ -202,7 +213,7 @@ class TradeServiceTest {
         @Test
         @DisplayName("should throw when caller is not offerer")
         void shouldThrowNotOfferer() {
-            Trade trade = Trade.builder().id(UUID.randomUUID()).offerer(offerer).receiver(receiver)
+            Trade trade = Trade.builder().id(UUID.randomUUID()).proposer(offerer).receiver(receiver)
                     .status(Trade.TradeStatus.PENDING).items(new ArrayList<>()).build();
             when(tradeRepository.findById(trade.getId())).thenReturn(Optional.of(trade));
 

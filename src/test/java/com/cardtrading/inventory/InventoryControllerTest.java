@@ -47,7 +47,7 @@ class InventoryControllerTest {
         UUID userId = UUID.randomUUID();
         UserCardDto dto = UserCardDto.builder()
                 .cardId(UUID.randomUUID()).cardName("Blue Dragon").rarity("LEGENDARY")
-                .quantity(3).acquiredAt(LocalDateTime.now()).acquiredFrom("SYSTEM").build();
+                .quantity(3).acquiredAt(LocalDateTime.now()).build();
 
         when(inventoryService.getUserInventory(eq(userId), any()))
                 .thenReturn(new PageImpl<>(List.of(dto), PageRequest.of(0, 20), 1));

@@ -63,17 +63,22 @@ class TradeControllerTest {
         @DisplayName("201 - successful trade creation")
         void shouldReturn201() throws Exception {
             UUID receiverId = UUID.randomUUID();
-            CreateTradeRequest request = CreateTradeRequest.builder()
-                    .receiverId(receiverId)
-                    .offeredCards(List.of(TradeItemRequest.builder().cardId(UUID.randomUUID()).quantity(1).build()))
-                    .requestedCards(List.of(TradeItemRequest.builder().cardId(UUID.randomUUID()).quantity(1).build()))
-                    .build();
+            TradeItemRequest offeredItem = new TradeItemRequest();
+            offeredItem.setUserCardId(UUID.randomUUID());
+            offeredItem.setQuantity(1);
+            TradeItemRequest requestedItem = new TradeItemRequest();
+            requestedItem.setUserCardId(UUID.randomUUID());
+            requestedItem.setQuantity(1);
+            CreateTradeRequest request = new CreateTradeRequest();
+            request.setReceiverId(receiverId);
+            request.setOfferedCards(List.of(offeredItem));
+            request.setRequestedCards(List.of(requestedItem));
 
             TradeResponse response = TradeResponse.builder()
-                    .id(UUID.randomUUID()).offererId(userId).receiverId(receiverId)
+                    .id(UUID.randomUUID()).proposerId(userId).receiverId(receiverId)
                     .status("PENDING").createdAt(LocalDateTime.now()).build();
 
-            when(tradeService.createTrade(eq(userId), any(), isNull())).thenReturn(response);
+            when(tradeService.createTrade(eq(userId), any())).thenReturn(response);
 
             mockMvc.perform(post("/api/v1/trades")
                             .principal(authAs(userId))
@@ -86,13 +91,18 @@ class TradeControllerTest {
         @Test
         @DisplayName("422 - self-trade")
         void shouldReturn422OnSelfTrade() throws Exception {
-            CreateTradeRequest request = CreateTradeRequest.builder()
-                    .receiverId(userId)
-                    .offeredCards(List.of(TradeItemRequest.builder().cardId(UUID.randomUUID()).quantity(1).build()))
-                    .requestedCards(List.of(TradeItemRequest.builder().cardId(UUID.randomUUID()).quantity(1).build()))
-                    .build();
+            TradeItemRequest offeredItem = new TradeItemRequest();
+            offeredItem.setUserCardId(UUID.randomUUID());
+            offeredItem.setQuantity(1);
+            TradeItemRequest requestedItem = new TradeItemRequest();
+            requestedItem.setUserCardId(UUID.randomUUID());
+            requestedItem.setQuantity(1);
+            CreateTradeRequest request = new CreateTradeRequest();
+            request.setReceiverId(userId);
+            request.setOfferedCards(List.of(offeredItem));
+            request.setRequestedCards(List.of(requestedItem));
 
-            when(tradeService.createTrade(eq(userId), any(), isNull()))
+            when(tradeService.createTrade(eq(userId), any()))
                     .thenThrow(new BusinessRuleException("You cannot trade with yourself"));
 
             mockMvc.perform(post("/api/v1/trades")
@@ -112,7 +122,7 @@ class TradeControllerTest {
         void shouldReturn200() throws Exception {
             UUID tradeId = UUID.randomUUID();
             TradeResponse response = TradeResponse.builder()
-                    .id(tradeId).status("ACCEPTED").acceptedAt(LocalDateTime.now())
+                    .id(tradeId).status("ACCEPTED").respondedAt(LocalDateTime.now())
                     .message("Trade accepted. Inventory update is being processed.").build();
 
             when(tradeService.acceptTrade(tradeId, userId)).thenReturn(response);

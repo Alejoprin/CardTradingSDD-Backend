@@ -62,11 +62,9 @@ class CardControllerTest {
                     .id(UUID.randomUUID())
                     .name("Blue Dragon")
                     .rarity("LEGENDARY")
-                    .cardType("MONSTER")
-                    .edition("First Edition")
                     .build();
 
-            when(cardService.listCards(isNull(), isNull(), isNull(), isNull(), any()))
+            when(cardService.listCards(isNull(), isNull(), isNull(), any()))
                     .thenReturn(new PageImpl<>(List.of(card), PageRequest.of(0, 20), 1));
 
             mockMvc.perform(get("/api/v1/cards"))
@@ -79,7 +77,7 @@ class CardControllerTest {
         @Test
         @DisplayName("200 - search and filter parameters")
         void shouldPassSearchAndFilterParams() throws Exception {
-            when(cardService.listCards(eq("dragon"), eq("LEGENDARY"), isNull(), isNull(), any()))
+            when(cardService.listCards(eq("dragon"), eq("LEGENDARY"), isNull(), any()))
                     .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
 
             mockMvc.perform(get("/api/v1/cards")
@@ -101,10 +99,7 @@ class CardControllerTest {
             CardDetailResponse detail = CardDetailResponse.builder()
                     .id(cardId)
                     .name("Blue Dragon")
-                    .description("A powerful dragon")
                     .rarity("LEGENDARY")
-                    .cardType("MONSTER")
-                    .edition("First Edition")
                     .createdAt(LocalDateTime.now())
                     .updatedAt(LocalDateTime.now())
                     .build();
@@ -114,7 +109,7 @@ class CardControllerTest {
             mockMvc.perform(get("/api/v1/cards/{cardId}", cardId))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.name").value("Blue Dragon"))
-                    .andExpect(jsonPath("$.description").value("A powerful dragon"));
+                    .andExpect(jsonPath("$.rarity").value("LEGENDARY"));
         }
 
         @Test

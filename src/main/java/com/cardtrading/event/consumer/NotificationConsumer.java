@@ -37,7 +37,7 @@ public class NotificationConsumer {
         Trade trade = tradeRepository.findById(event.getTradeId()).orElse(null);
         if (trade != null) {
             notificationService.sendTradeAcceptedNotification(
-                    event.getTradeId(), trade.getOfferer().getId(), trade.getReceiver().getId());
+                    event.getTradeId(), trade.getProposer().getId(), trade.getReceiver().getId());
         }
     }
 
@@ -47,7 +47,7 @@ public class NotificationConsumer {
         Trade trade = tradeRepository.findById(event.getTradeId()).orElse(null);
         if (trade != null) {
             notificationService.sendTradeRejectedNotification(
-                    event.getTradeId(), trade.getOfferer().getId(), event.getReason());
+                    event.getTradeId(), trade.getProposer().getId(), event.getReason());
         }
     }
 

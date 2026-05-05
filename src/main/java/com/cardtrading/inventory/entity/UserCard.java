@@ -5,6 +5,8 @@ import com.cardtrading.card.entity.Card;
 import com.cardtrading.card.entity.CustomCard;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -39,7 +41,8 @@ public class UserCard {
     private int quantity = 1;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 20, columnDefinition = "card_condition")
+    @JdbcType(PostgreSQLEnumJdbcType.class)
     @Builder.Default
     private CardCondition condition = CardCondition.NEAR_MINT;
 

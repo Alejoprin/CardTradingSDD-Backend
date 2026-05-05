@@ -3,6 +3,9 @@ package com.cardtrading.card.entity;
 import com.cardtrading.auth.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.ColumnTransformer;
+import org.hibernate.annotations.JdbcType;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -31,10 +34,12 @@ public class CustomCard {
     private String cardNumber;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "card_rarity")
+    @JdbcType(PostgreSQLEnumJdbcType.class)
     private Card.Rarity rarity;
 
     @Column(columnDefinition = "jsonb")
+    @ColumnTransformer(write = "?::jsonb")
     private String attributes;
 
     @Column(name = "image_url", length = 500)

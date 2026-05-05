@@ -12,6 +12,7 @@ import com.cardtrading.shared.exception.ResourceNotFoundException;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.cardtrading.shared.dto.RestPage;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -38,7 +39,7 @@ public class CardService {
     @Transactional(readOnly = true)
     public Page<CardSummaryResponse> listCards(String search, String rarity, UUID setId, Pageable pageable) {
         Specification<Card> spec = buildSpecification(search, rarity, setId);
-        return cardRepository.findAll(spec, pageable).map(this::toSummary);
+        return new RestPage<>(cardRepository.findAll(spec, pageable).map(this::toSummary));
     }
 
     @Cacheable(value = "card:detail", key = "#cardId")
