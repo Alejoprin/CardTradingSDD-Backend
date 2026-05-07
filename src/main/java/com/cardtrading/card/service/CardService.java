@@ -1,10 +1,10 @@
 package com.cardtrading.card.service;
 
-import com.cardtrading.card.dto.CardDetailResponse;
-import com.cardtrading.card.dto.CardRequest;
-import com.cardtrading.card.dto.CardSummaryResponse;
+import com.cardtrading.card.dto.*;
 import com.cardtrading.card.entity.Card;
+import com.cardtrading.card.entity.CardGame;
 import com.cardtrading.card.entity.CardSet;
+import com.cardtrading.card.repository.CardGameRepository;
 import com.cardtrading.card.repository.CardRepository;
 import com.cardtrading.card.repository.CardSetRepository;
 import com.cardtrading.shared.exception.BusinessRuleException;
@@ -25,6 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -32,8 +33,43 @@ import java.util.UUID;
 public class CardService {
 
     private final CardRepository cardRepository;
+    private final CardGameRepository cardGameRepository;
     private final CardSetRepository cardSetRepository;
     private final ImageStorageService imageStorageService;
+
+    @Cacheable(value = "cardsets:all", key = "#gameId != null ? #gameId : 'all'")
+    @Transactional(readOnly = true)
+    public List<CardSetDto> getAllSets(UUID gameId) {
+        List<CardSet> sets = (gameId != null)
+                ? cardSetRepository.findByGameId(gameId, Pageable.unpaged()).getContent()
+                : cardSetRepository.findAll();
+
+        return sets.stream()
+                .map(this::toSetDto)
+                .collect(Collectors.toList());
+    }
+
+    @Cacheable(value = "games:all")
+    @Transactional(readOnly = true)
+    public List<CardGameDto> getAllGames() {
+        return cardGameRepository.findAll().stream()
+                .map(this::toGameDto)  // <-- Usa el método private
+                .collect(Collectors.toList());
+    }
+    private CardGameDto toGameDto(CardGame game) {
+        return CardGameDto.builder()
+                .id(game.getId())
+                .name(game.getName())
+                .build();
+    }
+
+    private CardSetDto toSetDto(CardSet set) {
+        return CardSetDto.builder()
+                .id(set.getId())
+                .name(set.getName())
+                .gameName(set.getGame().getName())
+                .build();
+    }
 
     @Cacheable(value = "card:catalog", key = "#search + '-' + #rarity + '-' + #setId + '-' + #pageable.pageNumber + '-' + #pageable.pageSize")
     @Transactional(readOnly = true)

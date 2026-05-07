@@ -60,21 +60,33 @@ public class InventoryService {
 
         UserCard.CardCondition condition = UserCard.CardCondition.valueOf(request.getCondition().toUpperCase());
 
-        UserCard userCard = UserCard.builder()
-                .user(user)
-                .card(card)
-                .quantity(request.getQuantity())
-                .condition(condition)
-                .notes(request.getNotes())
-                .forTrade(false)
-                .forSale(false)
-                .build();
+        // Buscar si ya existe una carta con las mismas características
+        Optional<UserCard> existingUserCard = userCardRepository.findByUserAndCardAndCondition(user, card, condition);
+
+        UserCard userCard;
+        if (existingUserCard.isPresent()) {
+            // Si existe, incrementar la cantidad
+            userCard = existingUserCard.get();
+            userCard.setQuantity(userCard.getQuantity() + request.getQuantity());
+            log.info("Card quantity updated: userId={} cardId={} oldQty={} newQty={}",
+                    userId, card.getId(), userCard.getQuantity() - request.getQuantity(), userCard.getQuantity());
+        } else {
+            // Si no existe, crear nueva entrada
+            userCard = UserCard.builder()
+                    .user(user)
+                    .card(card)
+                    .quantity(request.getQuantity())
+                    .condition(condition)
+                    .notes(request.getNotes())
+                    .forTrade(false)
+                    .forSale(false)
+                    .build();
+            log.info("Card added to inventory: userId={} cardId={} qty={}", userId, card.getId(), request.getQuantity());
+        }
 
         userCard = userCardRepository.save(userCard);
-        log.info("Card added to inventory: userId={} cardId={} qty={}", userId, card.getId(), request.getQuantity());
         return toDto(userCard);
     }
-
     @Transactional
     public UserCardDto addCustomCard(UUID userId, UUID requesterId, CustomCardRequest request, MultipartFile image) {
         if (!userId.equals(requesterId)) {
