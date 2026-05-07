@@ -1,5 +1,7 @@
 package com.cardtrading.inventory.repository;
 
+import com.cardtrading.auth.entity.User;
+import com.cardtrading.card.entity.Card;
 import com.cardtrading.inventory.entity.UserCard;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,4 +19,5 @@ public interface UserCardRepository extends JpaRepository<UserCard, UUID> {
     Optional<UserCard> findByIdAndUserId(UUID id, UUID userId);
     Optional<UserCard> findByUserIdAndCardIdAndCondition(UUID userId, UUID cardId, UserCard.CardCondition condition);
     Optional<UserCard> findByUserIdAndCustomCardIdAndCondition(UUID userId, UUID customCardId, UserCard.CardCondition condition);
+    Optional<UserCard> findByUserAndCardAndCondition(User user, Card card, UserCard.CardCondition condition);
 }

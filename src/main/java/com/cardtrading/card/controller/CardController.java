@@ -1,8 +1,6 @@
 package com.cardtrading.card.controller;
 
-import com.cardtrading.card.dto.CardDetailResponse;
-import com.cardtrading.card.dto.CardRequest;
-import com.cardtrading.card.dto.CardSummaryResponse;
+import com.cardtrading.card.dto.*;
 import com.cardtrading.card.service.CardService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +14,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -35,6 +34,18 @@ public class CardController {
         Pageable pageable = PageRequest.of(page, Math.min(size, 100));
         return ResponseEntity.ok(cardService.listCards(search, rarity, setId, pageable));
     }
+
+    @GetMapping("/sets")
+    public ResponseEntity<List<CardSetDto>> getAllSets(
+            @RequestParam(required = false) UUID gameId) {
+        return ResponseEntity.ok(cardService.getAllSets(gameId));
+    }
+
+    @GetMapping("/games")
+    public ResponseEntity<List<CardGameDto>> getAllGames() {
+        return ResponseEntity.ok(cardService.getAllGames());
+    }
+
 
     @GetMapping("/{cardId}")
     public ResponseEntity<CardDetailResponse> getCard(@PathVariable UUID cardId) {
