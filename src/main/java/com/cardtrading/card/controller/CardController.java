@@ -2,11 +2,15 @@ package com.cardtrading.card.controller;
 
 import com.cardtrading.card.dto.*;
 import com.cardtrading.card.service.CardService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -46,6 +50,18 @@ public class CardController {
         return ResponseEntity.ok(cardService.getAllGames());
     }
 
+    @GetMapping("/set/{setId}")
+    @Operation(summary = "Get cards by set", description = "Retrieve paginated cards from a specific set")
+    public ResponseEntity<Page<CardDetailResponse>> getCardsBySet(
+            @PathVariable UUID setId,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            @RequestParam(defaultValue = "cardNumber") String sortBy) {
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).ascending());
+        Page<CardDetailResponse> cards = cardService.getCardsBySet(setId, pageable);
+        return ResponseEntity.ok(cards);
+    }
 
     @GetMapping("/{cardId}")
     public ResponseEntity<CardDetailResponse> getCard(@PathVariable UUID cardId) {
