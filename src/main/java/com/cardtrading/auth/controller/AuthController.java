@@ -79,7 +79,7 @@ public class AuthController {
                 .secure(true)
                 .path("/api/v1/auth")
                 .maxAge(COOKIE_MAX_AGE)
-                .sameSite("Strict")
+                .sameSite("None")
                 .build();
     }
 
@@ -89,7 +89,7 @@ public class AuthController {
                 .secure(true)
                 .path("/api/v1/auth")
                 .maxAge(0)
-                .sameSite("Strict")
+                .sameSite("None")
                 .build();
     }
 }
