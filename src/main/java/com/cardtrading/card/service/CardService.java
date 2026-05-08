@@ -49,6 +49,13 @@ public class CardService {
                 .collect(Collectors.toList());
     }
 
+    @Cacheable(value = "card:set", key = "#setId + '-' + #pageable.pageNumber + '-' + #pageable.pageSize")
+    @Transactional(readOnly = true)
+    public Page<CardDetailResponse> getCardsBySet(UUID setId, Pageable pageable) {
+        Page<Card> cards = cardRepository.findBySetId(setId, pageable);
+        return cards.map(this::toDetail);
+    }
+
     @Cacheable(value = "games:all")
     @Transactional(readOnly = true)
     public List<CardGameDto> getAllGames() {
