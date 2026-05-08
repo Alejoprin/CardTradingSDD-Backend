@@ -104,6 +104,15 @@ management:
       probes:
         enabled: true
 
+logging:
+  level:
+    root: WARN
+    com.cardtrading: INFO
+    org.springframework: WARN
+    org.hibernate: WARN
+    org.apache.kafka: WARN
+    io.lettuce: WARN
+
 springdoc:
   api-docs:
     path: /api-docs
