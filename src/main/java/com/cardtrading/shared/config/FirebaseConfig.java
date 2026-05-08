@@ -45,9 +45,10 @@ public class FirebaseConfig {
             log.info("Firebase initialized from credentials JSON env var");
         }
 
+        String cleanBucket = bucket.startsWith("gs://") ? bucket.substring(5) : bucket;
         FirebaseApp.initializeApp(FirebaseOptions.builder()
                 .setCredentials(credentials)
-                .setStorageBucket(bucket)
+                .setStorageBucket(cleanBucket)
                 .build());
     }
 }
