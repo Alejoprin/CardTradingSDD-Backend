@@ -1,5 +1,9 @@
 package com.cardtrading.shared.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,18 +22,32 @@ public class RedisConfig {
 
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory connectionFactory) {
+
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        mapper.activateDefaultTyping(
+                BasicPolymorphicTypeValidator.builder()
+                        .allowIfBaseType(Object.class)
+                        .build(),
+                ObjectMapper.DefaultTyping.NON_FINAL
+        );
+
+        GenericJackson2JsonRedisSerializer serializer =
+                new GenericJackson2JsonRedisSerializer(mapper);
+
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .serializeValuesWith(RedisSerializationContext.SerializationPair
-                        .fromSerializer(new GenericJackson2JsonRedisSerializer()))
+                        .fromSerializer(serializer))
                 .prefixCacheNameWith("cardtrading:");
 
         Map<String, RedisCacheConfiguration> cacheConfigurations = Map.of(
                 "card:catalog", defaultConfig.entryTtl(Duration.ofHours(1)),
-                "card:detail", defaultConfig.entryTtl(Duration.ofHours(1)),
-                "user:profile", defaultConfig.entryTtl(Duration.ofMinutes(30)),
+                "card:detail",  defaultConfig.entryTtl(Duration.ofHours(1)),
                 "card:set",     defaultConfig.entryTtl(Duration.ofHours(1)),
                 "games:all",    defaultConfig.entryTtl(Duration.ofHours(6)),
-                "cardsets:all", defaultConfig.entryTtl(Duration.ofHours(6))
+                "cardsets:all", defaultConfig.entryTtl(Duration.ofHours(6)),
+                "user:profile", defaultConfig.entryTtl(Duration.ofMinutes(30))
         );
 
         return RedisCacheManager.builder(connectionFactory)
