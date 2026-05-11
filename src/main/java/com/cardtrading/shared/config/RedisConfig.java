@@ -1,6 +1,5 @@
 package com.cardtrading.shared.config;
 
-import com.cardtrading.shared.dto.RestPage;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -27,10 +26,11 @@ import java.util.Map;
 public class RedisConfig {
 
     /**
-     * Mixin that redirects Jackson's deserialization of the abstract {@link PageImpl}
-     * type to the concrete, Jackson-friendly {@link RestPage} subclass, which
-     * declares a proper {@code @JsonCreator} constructor.  Without this, Jackson
-     * cannot construct {@code PageImpl} because it has no default constructor.
+     * Mixin that teaches Jackson how to deserialize {@link PageImpl} directly.
+     * The {@code @JsonCreator} constructor maps the JSON fields produced by
+     * Spring's page serialization back into a {@code PageImpl} instance.
+     * Without this, Jackson cannot construct {@code PageImpl} because it has
+     * no default constructor.
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     abstract static class PageImplMixin<T> {
@@ -55,11 +55,10 @@ public class RedisConfig {
                 ObjectMapper.DefaultTyping.NON_FINAL
         );
 
-        // Register a module that teaches Jackson how to deserialize PageImpl by
-        // delegating to RestPage, which has a proper @JsonCreator constructor.
+        // Register a module that teaches Jackson how to deserialize PageImpl
+        // directly via the PageImplMixin @JsonCreator constructor.
         SimpleModule pageModule = new SimpleModule("PageImplModule");
         pageModule.setMixInAnnotation(PageImpl.class, PageImplMixin.class);
-        pageModule.addAbstractTypeMapping(PageImpl.class, RestPage.class);
         mapper.registerModule(pageModule);
 
         GenericJackson2JsonRedisSerializer serializer =
