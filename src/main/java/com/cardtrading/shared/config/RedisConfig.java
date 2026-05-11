@@ -26,7 +26,10 @@ public class RedisConfig {
         Map<String, RedisCacheConfiguration> cacheConfigurations = Map.of(
                 "card:catalog", defaultConfig.entryTtl(Duration.ofHours(1)),
                 "card:detail", defaultConfig.entryTtl(Duration.ofHours(1)),
-                "user:profile", defaultConfig.entryTtl(Duration.ofMinutes(30))
+                "user:profile", defaultConfig.entryTtl(Duration.ofMinutes(30)),
+                "card:set",     defaultConfig.entryTtl(Duration.ofHours(1)),
+                "games:all",    defaultConfig.entryTtl(Duration.ofHours(6)),
+                "cardsets:all", defaultConfig.entryTtl(Duration.ofHours(6))
         );
 
         return RedisCacheManager.builder(connectionFactory)
