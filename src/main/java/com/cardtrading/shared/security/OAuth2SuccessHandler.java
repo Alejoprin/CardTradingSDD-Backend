@@ -56,7 +56,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         // Solo el accessToken va en la URL — el refreshToken ya está en la cookie
         String frontendUrl = allowedOrigins.split(",")[0].trim();
-        String redirectUrl = frontendUrl + frontendBasePath + "/#/oauth2/callback?accessToken=" + accessToken;
+        String redirectUrl = frontendUrl + frontendBasePath + "/oauth2/callback?accessToken=" + accessToken;
         getRedirectStrategy().sendRedirect(request, response, redirectUrl);
     }
 }
