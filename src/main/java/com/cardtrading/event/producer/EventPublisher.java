@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 @RequiredArgsConstructor
@@ -16,7 +18,16 @@ public class EventPublisher {
     public void publish(String topic, String key, Object event) {
         String traceId = MDC.get("traceId");
         log.info("Publishing event to topic={} key={} traceId={}", topic, key, traceId);
-        kafkaTemplate.send(topic, key, event);
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    kafkaTemplate.send(topic, key, event);
+                }
+            });
+        } else {
+            kafkaTemplate.send(topic, key, event);
+        }
     }
 
     public void publish(String topic, Object event) {
