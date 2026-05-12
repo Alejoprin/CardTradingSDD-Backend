@@ -136,11 +136,23 @@ public class InventoryService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if (quantity == source.getQuantity()) {
-            // Transfer the whole entry to the new owner
-            source.setUser(newOwner);
-            source.setForTrade(false);
-            source.setForSale(false);
-            userCardRepository.save(source);
+            UUID catalogCardId = source.getCard() != null ? source.getCard().getId() : null;
+            UUID customCardId = source.getCustomCard() != null ? source.getCustomCard().getId() : null;
+
+            Optional<UserCard> existing = catalogCardId != null
+                    ? userCardRepository.findByUserIdAndCardIdAndCondition(toUserId, catalogCardId, source.getCondition())
+                    : userCardRepository.findByUserIdAndCustomCardIdAndCondition(toUserId, customCardId, source.getCondition());
+
+            if (existing.isPresent()) {
+                existing.get().setQuantity(existing.get().getQuantity() + quantity);
+                userCardRepository.save(existing.get());
+                userCardRepository.delete(source);
+            } else {
+                source.setUser(newOwner);
+                source.setForTrade(false);
+                source.setForSale(false);
+                userCardRepository.save(source);
+            }
         } else {
             // Partial transfer: reduce source quantity, add to receiver's inventory
             source.setQuantity(source.getQuantity() - quantity);
