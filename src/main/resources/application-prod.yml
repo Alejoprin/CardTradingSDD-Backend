@@ -107,7 +107,7 @@ app:
   cors:
     allowed-origins: ${ALLOWED_ORIGINS}
   frontend:
-    base-path: "/CardTradingSDD-FrontEnd"
+    base-path: ${FRONTEND_BASE_PATH:}
 
 server:
   port: ${PORT:8080}
