@@ -8,6 +8,8 @@ import com.cardtrading.trade.entity.Trade;
 import com.cardtrading.trade.entity.TradeItem;
 import com.cardtrading.trade.repository.TradeRepository;
 import com.cardtrading.trade.service.TradeService;
+import com.cardtrading.transaction.entity.Transaction;
+import com.cardtrading.transaction.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -26,6 +28,7 @@ public class TradeInventoryConsumer {
     private final InventoryService inventoryService;
     private final TradeService tradeService;
     private final EventPublisher eventPublisher;
+    private final TransactionRepository transactionRepository;
 
     @KafkaListener(topics = "trading.trade.accepted", groupId = "trade-inventory-group")
     @Transactional
@@ -59,6 +62,12 @@ public class TradeInventoryConsumer {
             trade.setStatus(Trade.TradeStatus.COMPLETED);
             trade.setCompletedAt(LocalDateTime.now());
             tradeRepository.save(trade);
+
+            transactionRepository.save(Transaction.builder()
+                    .type(Transaction.TransactionType.TRADE)
+                    .trade(trade)
+                    .completedAt(trade.getCompletedAt())
+                    .build());
 
             tradeService.cancelConflictingTrades(trade);
 
