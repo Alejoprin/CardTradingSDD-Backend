@@ -110,6 +110,7 @@ app:
 server:
   port: ${PORT:8080}
   shutdown: graceful
+  forward-headers-strategy: native
 
 management:
   endpoints:
