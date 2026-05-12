@@ -27,8 +27,8 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
         Map<String, Object> attributes = oAuth2User.getAttributes();
 
         String email = (String) attributes.get("email");
-        String name  = (String) attributes.get("name");
-        String sub   = (String) attributes.get("sub");
+        String name = (String) attributes.get("name");
+        String sub = (String) attributes.get("sub");
 
         log.info("OAuth2 login attempt for email: {}", email);
 
@@ -47,3 +47,4 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
         log.info("OAuth2 loadUser completed for: {}", user.getId());
         return oAuth2User;
     }
+}
