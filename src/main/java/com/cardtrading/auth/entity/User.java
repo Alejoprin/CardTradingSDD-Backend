@@ -29,7 +29,7 @@ public class User {
     @Column(nullable = false)
     private String email;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String password;
 
     @Enumerated(EnumType.STRING)
@@ -50,6 +50,13 @@ public class User {
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
+
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private String provider = "LOCAL";  // LOCAL | GOOGLE
+
+    @Column(name = "provider_id")
+    private String providerId;
 
     @PrePersist
     protected void onCreate() {
