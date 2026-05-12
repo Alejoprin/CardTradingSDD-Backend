@@ -53,8 +53,9 @@ public class CardService {
     @Transactional(readOnly = true)
     public Page<CardDetailResponse> getCardsBySet(UUID setId, Pageable pageable) {
         Page<Card> cards = cardRepository.findBySetId(setId, pageable);
-        return cards.map(this::toDetail);
+        return new RestPage<>(cards.map(this::toDetail));
     }
+
 
     @Cacheable(value = "games:all")
     @Transactional(readOnly = true)
