@@ -72,6 +72,7 @@ public class Card {
     }
 
     public enum Rarity {
-        COMMON, UNCOMMON, RARE, EPIC, LEGENDARY, SECRET
+        COMMON, UNCOMMON, RARE, EPIC, LEGENDARY, SECRET,
+        BASE, RAINBOW, GLITTER, CRYSTAL_SHINE, GOLDEN_GLITTER
     }
 }
