@@ -2,6 +2,8 @@ package com.cardtrading.card.controller;
 
 import com.cardtrading.card.dto.*;
 import com.cardtrading.card.service.CardService;
+import com.cardtrading.inventory.dto.CardOwnerDto;
+import com.cardtrading.inventory.service.InventoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -15,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -27,6 +30,7 @@ import java.util.UUID;
 public class CardController {
 
     private final CardService cardService;
+    private final InventoryService inventoryService;
 
     @GetMapping
     public ResponseEntity<Page<CardSummaryResponse>> listCards(
@@ -66,6 +70,14 @@ public class CardController {
     @GetMapping("/{cardId}")
     public ResponseEntity<CardDetailResponse> getCard(@PathVariable UUID cardId) {
         return ResponseEntity.ok(cardService.getCardById(cardId));
+    }
+
+    @GetMapping("/{cardId}/owners")  // ← nuevo endpoint
+    public ResponseEntity<List<CardOwnerDto>> getCardOwners(
+            @PathVariable UUID cardId,
+            Authentication authentication) {
+        UUID requesterId = UUID.fromString(authentication.getName());
+        return ResponseEntity.ok(inventoryService.getCardOwners(cardId, requesterId));
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)

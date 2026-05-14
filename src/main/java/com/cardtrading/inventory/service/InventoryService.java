@@ -8,6 +8,7 @@ import com.cardtrading.card.repository.CardRepository;
 import com.cardtrading.card.repository.CustomCardRepository;
 import com.cardtrading.card.service.ImageStorageService;
 import com.cardtrading.inventory.dto.AddCatalogCardRequest;
+import com.cardtrading.inventory.dto.CardOwnerDto;
 import com.cardtrading.inventory.dto.CustomCardRequest;
 import com.cardtrading.inventory.dto.UserCardDto;
 import com.cardtrading.inventory.entity.UserCard;
@@ -27,6 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -200,6 +202,23 @@ public class InventoryService {
 
         userCardRepository.delete(userCard);
         log.info("UserCard removed: userCardId={} userId={}", userCardId, requesterId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CardOwnerDto> getCardOwners(UUID cardId, UUID excludeUserId) {
+        if (!cardRepository.existsById(cardId)) {
+            throw new ResourceNotFoundException("Card not found");
+        }
+        return userCardRepository.findByCardIdExcludingUser(cardId, excludeUserId)
+                .stream()
+                .map(uc -> CardOwnerDto.builder()
+                        .userId(uc.getUser().getId())
+                        .username(uc.getUser().getUsername())
+                        .userCardId(uc.getId())
+                        .condition(uc.getCondition().name())
+                        .quantity(uc.getQuantity())
+                        .build())
+                .collect(Collectors.toList());
     }
 
     private UserCardDto toDto(UserCard userCard) {
