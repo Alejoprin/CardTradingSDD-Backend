@@ -58,6 +58,9 @@ public class User {
     @Column(name = "provider_id")
     private String providerId;
 
+    @Column(name = "profile_image_url", length = 500)
+    private String profileImageUrl;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

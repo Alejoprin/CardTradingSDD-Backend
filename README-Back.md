@@ -14,7 +14,7 @@ Base URL: `http://localhost:8080`
 6. [Auth](#auth--apiv1auth)
 7. [Usuarios](#usuarios--apiv1users)
 8. [Inventario](#inventario--apiv1usersuseridInventory)
-9. [Catálogo de cartas](#catálogo-de-cartas--apiv1cards)
+9. [Catálogo de cartas](#catálogo-de-cartas--apiv1cards) *(incluye juegos, sets y owners)*
 10. [Trades](#trades--apiv1trades)
 11. [Admin](#admin--apiv1admin--solo-role-admin)
 
@@ -38,17 +38,22 @@ Cuando expire, llama a `POST /api/v1/auth/refresh` para obtener uno nuevo sin qu
 
 ## Imágenes
 
-Las imágenes de las cartas (catálogo y cartas custom) se almacenan en **Firebase Storage**.
+Las imágenes se almacenan en **Cloudinary**. Hay dos carpetas:
+
+| Carpeta | Uso |
+|---------|-----|
+| `cards/` | Imágenes del catálogo y cartas custom del inventario |
+| `User_Img/` | Fotos de perfil de usuario |
 
 **Lo que necesita saber el frontend:**
 
-- Los campos `imageUrl` e `imageSmallUrl` que devuelve la API son **URLs públicas directas** de Firebase Storage con este formato:
+- Los campos `imageUrl` e `imageSmallUrl` que devuelve la API son **URLs públicas directas** de Cloudinary con este formato:
   ```
-  https://storage.googleapis.com/tu-proyecto.appspot.com/cards/uuid.jpg
+  https://res.cloudinary.com/{cloud_name}/image/upload/v{version}/cards/uuid.jpg
   ```
 - Puedes usarlas directamente en un `<img src={card.imageUrl} />` **sin ningún header de autenticación**. Son públicas.
 - `imageSmallUrl` es un campo reservado para una versión reducida de la imagen (thumbnail). Actualmente puede ser `null` — usar `imageUrl` como fallback.
-- La **subida** de imágenes sí pasa por el backend (endpoints de crear/editar carta y carta custom). El frontend envía el archivo como `multipart/form-data` y el backend devuelve la URL ya lista en la respuesta. El frontend no interactúa con Firebase directamente en ningún momento.
+- La **subida** de imágenes pasa siempre por el backend. El frontend envía el archivo como `multipart/form-data` y el backend devuelve la URL ya lista en la respuesta. El frontend no interactúa con Cloudinary directamente.
 - Formatos aceptados: **JPEG, PNG, WebP**. Tamaño máximo: **5 MB**.
 
 ```jsx
@@ -535,6 +540,80 @@ Lista el catálogo de cartas. **Público, no requiere auth.**
 
 ---
 
+### `GET /api/v1/cards/games`
+
+Lista todos los juegos disponibles. **Público, no requiere auth.**
+
+**Respuesta `200`:**
+```json
+[
+  { "id": "uuid", "name": "Pokémon TCG" },
+  { "id": "uuid", "name": "Magic: The Gathering" }
+]
+```
+
+---
+
+### `GET /api/v1/cards/sets`
+
+Lista todos los sets. Se puede filtrar por juego. **Público, no requiere auth.**
+
+**Query params:**
+
+| Param | Tipo | Descripción |
+|-------|------|-------------|
+| `gameId` | uuid | Filtrar sets de un juego concreto (opcional) |
+
+**Respuesta `200`:**
+```json
+[
+  { "id": "uuid", "name": "Base Set", "gameName": "Pokémon TCG" }
+]
+```
+
+---
+
+### `GET /api/v1/cards/set/{setId}`
+
+Lista las cartas de un set concreto paginadas. **Público, no requiere auth.**
+
+**Query params:**
+
+| Param | Tipo | Default | Descripción |
+|-------|------|---------|-------------|
+| `page` | int | `0` | Número de página |
+| `size` | int | `20` | Tamaño (máx. 100) |
+| `sortBy` | string | `cardNumber` | Campo de ordenación |
+
+**Respuesta `200` (paginada):** lista de `CardDetailResponse` (mismo objeto que `GET /cards/{cardId}`)
+
+**Errores:**
+- `404` — set no encontrado
+
+---
+
+### `GET /api/v1/cards/{cardId}/owners`
+
+Lista los usuarios que tienen una carta concreta en su inventario, excluyendo al propio usuario autenticado. Útil para encontrar con quién hacer trade. 🔒 **Requiere auth.**
+
+**Respuesta `200`:**
+```json
+[
+  {
+    "userId": "uuid",
+    "username": "string",
+    "userCardId": "uuid",
+    "condition": "NEAR_MINT",
+    "quantity": 2
+  }
+]
+```
+
+**Errores:**
+- `404` — carta no encontrada
+
+---
+
 ### `GET /api/v1/cards/{cardId}`
 
 Detalle de una carta del catálogo. **Público, no requiere auth.**
@@ -902,14 +981,14 @@ Estadísticas globales de la plataforma.
 
 ---
 
-## Imágenes
+## Imágenes (resumen rápido)
 
-Las imágenes se sirven como archivos estáticos desde el backend.
-
-- **Ruta relativa devuelta por la API:** `/uploads/cards/uuid.jpg`
-- **URL completa en desarrollo:** `http://localhost:8080/uploads/cards/uuid.jpg`
-- **Formatos aceptados al subir:** JPEG, PNG, WebP
+- **Proveedor:** Cloudinary
+- **Carpeta cartas:** `cards/`
+- **Carpeta usuarios:** `User_Img/`
+- **Formatos aceptados:** JPEG, PNG, WebP
 - **Tamaño máximo:** 5 MB
+- **Las URLs devueltas** son públicas y permanentes — úsalas directamente en `<img src>`
 
 ---
 

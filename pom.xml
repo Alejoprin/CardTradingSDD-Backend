@@ -123,11 +123,11 @@
             <version>${springdoc.version}</version>
         </dependency>
 
-        <!-- Firebase Admin SDK -->
+        <!-- Cloudinary -->
         <dependency>
-            <groupId>com.google.firebase</groupId>
-            <artifactId>firebase-admin</artifactId>
-            <version>9.3.0</version>
+            <groupId>com.cloudinary</groupId>
+            <artifactId>cloudinary-http44</artifactId>
+            <version>1.38.0</version>
         </dependency>
 
         <!-- Lombok -->
