@@ -85,9 +85,10 @@ spring:
     suffix: .html
 
 app:
-  firebase:
-    bucket: ${FIREBASE_BUCKET}
-    credentials-path: ${FIREBASE_CREDENTIALS_PATH:./firebase-service-account.json}
+  cloudinary:
+    cloud-name: ${CLOUDINARY_CLOUD_NAME}
+    api-key: ${CLOUDINARY_API_KEY}
+    api-secret: ${CLOUDINARY_API_SECRET}
 
   jwt:
     secret: ${JWT_SECRET:dev-secret-key}

@@ -4,7 +4,9 @@ import com.cardtrading.auth.entity.User;
 import com.cardtrading.auth.repository.UserRepository;
 import com.cardtrading.card.entity.Card;
 import com.cardtrading.card.entity.CustomCard;
+import com.cardtrading.card.entity.CardSet;
 import com.cardtrading.card.repository.CardRepository;
+import com.cardtrading.card.repository.CardSetRepository;
 import com.cardtrading.card.repository.CustomCardRepository;
 import com.cardtrading.card.service.ImageStorageService;
 import com.cardtrading.inventory.dto.AddCatalogCardRequest;
@@ -18,6 +20,8 @@ import com.cardtrading.shared.exception.ResourceNotFoundException;
 import com.cardtrading.trade.entity.Trade;
 import com.cardtrading.trade.repository.TradeItemRepository;
 import jakarta.persistence.criteria.Predicate;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -41,9 +45,11 @@ public class InventoryService {
     private final UserCardRepository userCardRepository;
     private final UserRepository userRepository;
     private final CardRepository cardRepository;
+    private final CardSetRepository cardSetRepository;
     private final CustomCardRepository customCardRepository;
     private final TradeItemRepository tradeItemRepository;
     private final ImageStorageService imageStorageService;
+    private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
     public Page<UserCardDto> getUserInventory(UUID userId, String search, String rarity,
@@ -149,34 +155,89 @@ public class InventoryService {
         Card.Rarity rarity = Card.Rarity.valueOf(request.getRarity().toUpperCase());
         UserCard.CardCondition condition = UserCard.CardCondition.valueOf(request.getCondition().toUpperCase());
 
-        String imageUrl = null;
-        if (image != null && !image.isEmpty()) {
-            imageUrl = imageStorageService.store(image);
+        // Fix 3: validate attributes JSON before hitting the DB
+        if (request.getAttributes() != null && !request.getAttributes().isBlank()) {
+            try {
+                objectMapper.readTree(request.getAttributes());
+            } catch (JsonProcessingException e) {
+                throw new BusinessRuleException("attributes must be valid JSON");
+            }
         }
 
-        CustomCard customCard = CustomCard.builder()
-                .owner(user)
-                .name(request.getName())
-                .cardNumber(request.getCardNumber())
-                .rarity(rarity)
-                .attributes(request.getAttributes())
-                .imageUrl(imageUrl)
-                .notes(request.getNotes())
-                .build();
-        customCard = customCardRepository.save(customCard);
+        // Resolve set if provided
+        CardSet cardSet = null;
+        if (request.getSetId() != null) {
+            cardSet = cardSetRepository.findById(request.getSetId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Card set not found"));
+        }
 
-        UserCard userCard = UserCard.builder()
-                .user(user)
-                .customCard(customCard)
-                .quantity(request.getQuantity())
-                .condition(condition)
-                .forTrade(false)
-                .forSale(false)
-                .build();
-        userCard = userCardRepository.save(userCard);
+        // Fix 4: deduplication — find existing custom card by (owner, name, rarity, set)
+        final CardSet resolvedSet = cardSet;
+        CustomCard existingCustomCard = (request.getSetId() != null)
+                ? customCardRepository.findByOwnerIdAndNameAndRarityAndSetId(userId, request.getName(), rarity, request.getSetId()).orElse(null)
+                : customCardRepository.findByOwnerIdAndNameAndRarityAndSetIsNull(userId, request.getName(), rarity).orElse(null);
 
-        log.info("Custom card added to inventory: userId={} customCardId={}", userId, customCard.getId());
-        return toDto(userCard);
+        if (existingCustomCard != null) {
+            Optional<UserCard> existingUserCard = userCardRepository
+                    .findByUserIdAndCustomCardIdAndCondition(userId, existingCustomCard.getId(), condition);
+
+            if (existingUserCard.isPresent()) {
+                // Same card + same condition → increment quantity
+                UserCard userCard = existingUserCard.get();
+                userCard.setQuantity(userCard.getQuantity() + request.getQuantity());
+                log.info("Custom card quantity updated: userId={} customCardId={}", userId, existingCustomCard.getId());
+                return toDto(userCardRepository.save(userCard));
+            } else {
+                // Same card + different condition → new UserCard entry, reuse existing CustomCard
+                UserCard userCard = UserCard.builder()
+                        .user(user)
+                        .customCard(existingCustomCard)
+                        .quantity(request.getQuantity())
+                        .condition(condition)
+                        .forTrade(false)
+                        .forSale(false)
+                        .build();
+                log.info("Custom card added with new condition: userId={} customCardId={}", userId, existingCustomCard.getId());
+                return toDto(userCardRepository.save(userCard));
+            }
+        }
+
+        // Fix 2: new custom card — upload image only right before DB save, delete on failure
+        String imageUrl = null;
+        if (image != null && !image.isEmpty()) {
+            imageUrl = imageStorageService.storeCardImage(image);
+        }
+        try {
+            CustomCard customCard = CustomCard.builder()
+                    .owner(user)
+                    .set(resolvedSet)
+                    .name(request.getName())
+                    .cardNumber(request.getCardNumber())
+                    .rarity(rarity)
+                    .attributes(request.getAttributes())
+                    .imageUrl(imageUrl)
+                    .notes(request.getNotes())
+                    .build();
+            customCard = customCardRepository.save(customCard);
+
+            UserCard userCard = UserCard.builder()
+                    .user(user)
+                    .customCard(customCard)
+                    .quantity(request.getQuantity())
+                    .condition(condition)
+                    .forTrade(false)
+                    .forSale(false)
+                    .build();
+            userCard = userCardRepository.save(userCard);
+
+            log.info("Custom card added to inventory: userId={} customCardId={}", userId, customCard.getId());
+            return toDto(userCard);
+        } catch (Exception e) {
+            if (imageUrl != null) {
+                imageStorageService.delete(imageUrl);
+            }
+            throw e;
+        }
     }
 
     @Transactional
@@ -300,6 +361,10 @@ public class InventoryService {
                     .rarity(cc.getRarity().name())
                     .imageUrl(cc.getImageUrl())
                     .imageSmallUrl(cc.getImageSmallUrl());
+            if (cc.getSet() != null) {
+                builder.setName(cc.getSet().getName())
+                        .gameName(cc.getSet().getGame().getName());
+            }
         } else {
             Card card = userCard.getCard();
             builder.cardId(card.getId())

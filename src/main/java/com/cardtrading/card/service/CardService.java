@@ -104,7 +104,7 @@ public class CardService {
             throw new BusinessRuleException("A card with that name already exists in this set");
         }
 
-        String imageUrl = (image != null && !image.isEmpty()) ? imageStorageService.store(image) : null;
+        String imageUrl = (image != null && !image.isEmpty()) ? imageStorageService.storeCardImage(image) : null;
 
         Card card = Card.builder()
                 .set(set)
@@ -140,7 +140,7 @@ public class CardService {
 
         if (image != null && !image.isEmpty()) {
             imageStorageService.delete(card.getImageUrl());
-            card.setImageUrl(imageStorageService.store(image));
+            card.setImageUrl(imageStorageService.storeCardImage(image));
         }
 
         card = cardRepository.save(card);

@@ -1,6 +1,7 @@
 package com.cardtrading.card.entity;
 
 import com.cardtrading.auth.entity.User;
+import com.cardtrading.card.entity.CardSet;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.ColumnTransformer;
@@ -26,6 +27,10 @@ public class CustomCard {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "set_id")
+    private CardSet set;
 
     @Column(nullable = false, length = 200)
     private String name;

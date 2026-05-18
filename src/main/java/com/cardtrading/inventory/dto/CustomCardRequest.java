@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import java.util.UUID;
+
 @Data
 public class CustomCardRequest {
 
@@ -22,6 +24,7 @@ public class CustomCardRequest {
     @Min(value = 1, message = "Quantity must be at least 1")
     private int quantity = 1;
 
+    private UUID setId;
     private String attributes;
     private String notes;
 }

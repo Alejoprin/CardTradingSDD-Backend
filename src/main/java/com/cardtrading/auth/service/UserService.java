@@ -4,6 +4,7 @@ import com.cardtrading.auth.dto.UpdateUserRequest;
 import com.cardtrading.auth.dto.UserResponse;
 import com.cardtrading.auth.entity.User;
 import com.cardtrading.auth.repository.UserRepository;
+import com.cardtrading.card.service.ImageStorageService;
 import com.cardtrading.shared.exception.BusinessRuleException;
 import com.cardtrading.shared.exception.ResourceNotFoundException;
 import com.cardtrading.shared.exception.UnauthorizedException;
@@ -11,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
@@ -20,6 +22,7 @@ import java.util.UUID;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final ImageStorageService imageStorageService;
 
     public UserResponse getUserProfile(UUID requesterId, UUID targetId) {
         User target = userRepository.findById(targetId)
@@ -29,6 +32,7 @@ public class UserService {
                 .id(target.getId())
                 .username(target.getUsername())
                 .role(target.getRole().name())
+                .profileImageUrl(target.getProfileImageUrl())
                 .createdAt(target.getCreatedAt());
 
         // Only show email to profile owner or admin
@@ -70,6 +74,38 @@ public class UserService {
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .role(user.getRole().name())
+                .profileImageUrl(user.getProfileImageUrl())
+                .createdAt(user.getCreatedAt())
+                .build();
+    }
+
+    @Transactional
+    public UserResponse uploadProfileImage(UUID requesterId, UUID targetId, MultipartFile image) {
+        if (!requesterId.equals(targetId)) {
+            throw new UnauthorizedException("You are not authorized to update this profile");
+        }
+        User user = userRepository.findById(targetId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        String newImageUrl = imageStorageService.storeUserImage(image);
+        try {
+            if (user.getProfileImageUrl() != null) {
+                imageStorageService.delete(user.getProfileImageUrl());
+            }
+            user.setProfileImageUrl(newImageUrl);
+            user = userRepository.save(user);
+            log.info("Profile image updated: userId={}", targetId);
+        } catch (Exception e) {
+            imageStorageService.delete(newImageUrl);
+            throw e;
+        }
+
+        return UserResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .role(user.getRole().name())
+                .profileImageUrl(user.getProfileImageUrl())
                 .createdAt(user.getCreatedAt())
                 .build();
     }
