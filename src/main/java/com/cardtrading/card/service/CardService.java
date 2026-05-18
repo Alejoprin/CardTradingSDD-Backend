@@ -79,10 +79,10 @@ public class CardService {
                 .build();
     }
 
-    @Cacheable(value = "card:catalog", key = "#search + '-' + #rarity + '-' + #setId + '-' + #pageable.pageNumber + '-' + #pageable.pageSize")
+    @Cacheable(value = "card:catalog", key = "#search + '-' + #rarity + '-' + #setId + '-' + #gameId + '-' + #pageable.pageNumber + '-' + #pageable.pageSize")
     @Transactional(readOnly = true)
-    public Page<CardSummaryResponse> listCards(String search, String rarity, UUID setId, Pageable pageable) {
-        Specification<Card> spec = buildSpecification(search, rarity, setId);
+    public Page<CardSummaryResponse> listCards(String search, String rarity, UUID setId, UUID gameId, Pageable pageable) {
+        Specification<Card> spec = buildSpecification(search, rarity, setId, gameId);
         return new RestPage<>(cardRepository.findAll(spec, pageable).map(this::toSummary));
     }
 
@@ -158,7 +158,7 @@ public class CardService {
         log.info("Card deleted: cardId={}", cardId);
     }
 
-    private Specification<Card> buildSpecification(String search, String rarity, UUID setId) {
+    private Specification<Card> buildSpecification(String search, String rarity, UUID setId, UUID gameId) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -170,6 +170,9 @@ public class CardService {
             }
             if (setId != null) {
                 predicates.add(cb.equal(root.get("set").get("id"), setId));
+            }
+            if (gameId != null) {
+                predicates.add(cb.equal(root.get("set").get("game").get("id"), gameId));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));

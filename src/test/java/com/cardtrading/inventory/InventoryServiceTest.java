@@ -64,10 +64,10 @@ class InventoryServiceTest {
             UserCard uc = UserCard.builder().id(UUID.randomUUID()).user(testUser).card(testCard)
                     .quantity(3).acquiredAt(LocalDateTime.now()).build();
             when(userRepository.existsById(userId)).thenReturn(true);
-            when(userCardRepository.findByUserId(userId, pageable))
+            when(userCardRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class), eq(pageable)))
                     .thenReturn(new PageImpl<>(List.of(uc), pageable, 1));
 
-            Page<UserCardDto> result = inventoryService.getUserInventory(userId, pageable);
+            Page<UserCardDto> result = inventoryService.getUserInventory(userId, null, null, null, null, null, pageable);
 
             assertThat(result.getContent()).hasSize(1);
             assertThat(result.getContent().get(0).getCardName()).isEqualTo("Blue Dragon");
@@ -79,10 +79,10 @@ class InventoryServiceTest {
         void shouldReturnEmpty() {
             Pageable pageable = PageRequest.of(0, 20);
             when(userRepository.existsById(userId)).thenReturn(true);
-            when(userCardRepository.findByUserId(userId, pageable))
+            when(userCardRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class), eq(pageable)))
                     .thenReturn(new PageImpl<>(List.of(), pageable, 0));
 
-            Page<UserCardDto> result = inventoryService.getUserInventory(userId, pageable);
+            Page<UserCardDto> result = inventoryService.getUserInventory(userId, null, null, null, null, null, pageable);
             assertThat(result.getContent()).isEmpty();
         }
 
@@ -90,7 +90,7 @@ class InventoryServiceTest {
         @DisplayName("should throw for unknown user")
         void shouldThrowForUnknownUser() {
             when(userRepository.existsById(userId)).thenReturn(false);
-            assertThatThrownBy(() -> inventoryService.getUserInventory(userId, PageRequest.of(0, 20)))
+            assertThatThrownBy(() -> inventoryService.getUserInventory(userId, null, null, null, null, null, PageRequest.of(0, 20)))
                     .isInstanceOf(ResourceNotFoundException.class);
         }
     }

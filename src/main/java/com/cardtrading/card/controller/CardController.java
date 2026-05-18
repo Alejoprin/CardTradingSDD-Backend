@@ -37,10 +37,11 @@ public class CardController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String rarity,
             @RequestParam(required = false) UUID setId,
+            @RequestParam(required = false) UUID gameId,  // ← nuevo
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Pageable pageable = PageRequest.of(page, Math.min(size, 100));
-        return ResponseEntity.ok(cardService.listCards(search, rarity, setId, pageable));
+        return ResponseEntity.ok(cardService.listCards(search, rarity, setId, gameId, pageable));
     }
 
     @GetMapping("/sets")

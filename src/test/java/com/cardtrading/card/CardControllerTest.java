@@ -64,7 +64,7 @@ class CardControllerTest {
                     .rarity("LEGENDARY")
                     .build();
 
-            when(cardService.listCards(isNull(), isNull(), isNull(), any()))
+            when(cardService.listCards(isNull(), isNull(), isNull(), isNull(), any()))
                     .thenReturn(new PageImpl<>(List.of(card), PageRequest.of(0, 20), 1));
 
             mockMvc.perform(get("/api/v1/cards"))
@@ -77,7 +77,7 @@ class CardControllerTest {
         @Test
         @DisplayName("200 - search and filter parameters")
         void shouldPassSearchAndFilterParams() throws Exception {
-            when(cardService.listCards(eq("dragon"), eq("LEGENDARY"), isNull(), any()))
+            when(cardService.listCards(eq("dragon"), eq("LEGENDARY"), isNull(), isNull(), any()))
                     .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
 
             mockMvc.perform(get("/api/v1/cards")

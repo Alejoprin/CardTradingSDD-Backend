@@ -2,6 +2,7 @@ package com.cardtrading.inventory.controller;
 
 import com.cardtrading.inventory.dto.AddCatalogCardRequest;
 import com.cardtrading.inventory.dto.CustomCardRequest;
+import com.cardtrading.inventory.dto.UpdateQuantityRequest;
 import com.cardtrading.inventory.dto.UserCardDto;
 import com.cardtrading.inventory.service.InventoryService;
 import jakarta.validation.Valid;
@@ -29,9 +30,16 @@ public class InventoryController {
     public ResponseEntity<Page<UserCardDto>> getUserInventory(
             @PathVariable UUID userId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String rarity,
+            @RequestParam(required = false) String condition,
+            @RequestParam(required = false) UUID gameId,
+            @RequestParam(required = false) UUID setId) {
         Pageable pageable = PageRequest.of(page, Math.min(size, 100));
-        return ResponseEntity.ok(inventoryService.getUserInventory(userId, pageable));
+        return ResponseEntity.ok(
+                inventoryService.getUserInventory(userId, search, rarity, condition, gameId, setId, pageable)
+        );
     }
 
     @PostMapping("/{userId}/inventory")
@@ -53,6 +61,18 @@ public class InventoryController {
         UUID requesterId = UUID.fromString(authentication.getName());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(inventoryService.addCustomCard(userId, requesterId, request, image));
+    }
+
+    @PatchMapping("/{userId}/inventory/{userCardId}")
+    public ResponseEntity<UserCardDto> updateQuantity(
+            @PathVariable UUID userId,
+            @PathVariable UUID userCardId,
+            @Valid @RequestBody UpdateQuantityRequest request,
+            Authentication authentication) {
+        UUID requesterId = UUID.fromString(authentication.getName());
+        return ResponseEntity.ok(
+                inventoryService.updateQuantity(userCardId, requesterId, request.getQuantity())
+        );
     }
 
     @DeleteMapping("/{userId}/inventory/{userCardId}")

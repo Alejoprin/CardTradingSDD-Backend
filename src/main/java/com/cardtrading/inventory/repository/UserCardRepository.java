@@ -6,6 +6,7 @@ import com.cardtrading.inventory.entity.UserCard;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -15,7 +16,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Repository
-public interface UserCardRepository extends JpaRepository<UserCard, UUID> {
+public interface UserCardRepository extends JpaRepository<UserCard, UUID>, JpaSpecificationExecutor<UserCard> {
+
     Page<UserCard> findByUserId(UUID userId, Pageable pageable);
     List<UserCard> findByUserIdAndCardId(UUID userId, UUID cardId);
     Optional<UserCard> findByIdAndUserId(UUID id, UUID userId);
@@ -25,4 +27,5 @@ public interface UserCardRepository extends JpaRepository<UserCard, UUID> {
 
     @Query("SELECT uc FROM UserCard uc JOIN FETCH uc.user WHERE uc.card.id = :cardId AND uc.user.id != :excludeUserId")
     List<UserCard> findByCardIdExcludingUser(@Param("cardId") UUID cardId, @Param("excludeUserId") UUID excludeUserId);
+
 }
