@@ -19,16 +19,19 @@ import com.cardtrading.shared.exception.BusinessRuleException;
 import com.cardtrading.shared.exception.ResourceNotFoundException;
 import com.cardtrading.trade.entity.Trade;
 import com.cardtrading.trade.repository.TradeItemRepository;
+import jakarta.persistence.criteria.Predicate;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -49,11 +52,57 @@ public class InventoryService {
     private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
-    public Page<UserCardDto> getUserInventory(UUID userId, Pageable pageable) {
+    public Page<UserCardDto> getUserInventory(UUID userId, String search, String rarity,
+                                              String condition, UUID gameId, UUID setId,
+                                              Pageable pageable) {
         if (!userRepository.existsById(userId)) {
             throw new ResourceNotFoundException("User not found");
         }
-        return userCardRepository.findByUserId(userId, pageable).map(this::toDto);
+
+        Specification<UserCard> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+
+            predicates.add(cb.equal(root.get("user").get("id"), userId));
+
+            if (search != null && !search.isBlank()) {
+                var cardJoin = root.join("card", jakarta.persistence.criteria.JoinType.LEFT);
+                var customJoin = root.join("customCard", jakarta.persistence.criteria.JoinType.LEFT);
+                predicates.add(cb.or(
+                        cb.like(cb.lower(cardJoin.get("name")), "%" + search.toLowerCase() + "%"),
+                        cb.like(cb.lower(customJoin.get("name")), "%" + search.toLowerCase() + "%")
+                ));
+            }
+
+            if (rarity != null && !rarity.isBlank()) {
+                Card.Rarity rarityEnum = Card.Rarity.valueOf(rarity.toUpperCase());
+                var cardJoin = root.join("card", jakarta.persistence.criteria.JoinType.LEFT);
+                var customJoin = root.join("customCard", jakarta.persistence.criteria.JoinType.LEFT);
+                predicates.add(cb.or(
+                        cb.equal(cardJoin.get("rarity"), rarityEnum),
+                        cb.equal(customJoin.get("rarity"), rarityEnum)
+                ));
+            }
+
+            if (condition != null && !condition.isBlank()) {
+                predicates.add(cb.equal(root.get("condition"),
+                        UserCard.CardCondition.valueOf(condition.toUpperCase())));
+            }
+
+            if (gameId != null) {
+                var cardJoin = root.join("card", jakarta.persistence.criteria.JoinType.LEFT);
+                var setJoin = cardJoin.join("set", jakarta.persistence.criteria.JoinType.LEFT);
+                predicates.add(cb.equal(setJoin.get("game").get("id"), gameId));
+            }
+
+            if (setId != null) {
+                var cardJoin = root.join("card", jakarta.persistence.criteria.JoinType.LEFT);
+                predicates.add(cb.equal(cardJoin.get("set").get("id"), setId));
+            }
+
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        return userCardRepository.findAll(spec, pageable).map(this::toDto);
     }
 
     @Transactional
@@ -249,6 +298,17 @@ public class InventoryService {
         }
 
         log.info("UserCard transferred: userCardId={} toUserId={} quantity={}", userCardId, toUserId, quantity);
+    }
+
+    @Transactional
+    public UserCardDto updateQuantity(UUID userCardId, UUID requesterId, int quantity) {
+        UserCard userCard = userCardRepository.findByIdAndUserId(userCardId, requesterId)
+                .orElseThrow(() -> new ResourceNotFoundException("Card not found in your inventory"));
+
+        userCard.setQuantity(quantity);
+        userCard = userCardRepository.save(userCard);
+        log.info("UserCard quantity updated: userCardId={} quantity={}", userCardId, quantity);
+        return toDto(userCard);
     }
 
     @Transactional

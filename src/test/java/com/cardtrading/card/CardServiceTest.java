@@ -66,7 +66,7 @@ class CardServiceTest {
 
             when(cardRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(cardPage);
 
-            Page<CardSummaryResponse> result = cardService.listCards(null, null, null, pageable);
+            Page<CardSummaryResponse> result = cardService.listCards(null, null, null, null, pageable);
 
             assertThat(result.getContent()).hasSize(1);
             assertThat(result.getContent().get(0).getName()).isEqualTo("Blue Dragon");
@@ -81,7 +81,7 @@ class CardServiceTest {
 
             when(cardRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(emptyPage);
 
-            Page<CardSummaryResponse> result = cardService.listCards("nonexistent", null, null, pageable);
+            Page<CardSummaryResponse> result = cardService.listCards("nonexistent", null, null, null, pageable);
 
             assertThat(result.getContent()).isEmpty();
             assertThat(result.getTotalElements()).isZero();
@@ -95,7 +95,7 @@ class CardServiceTest {
 
             when(cardRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(cardPage);
 
-            Page<CardSummaryResponse> result = cardService.listCards(null, "LEGENDARY", null, pageable);
+            Page<CardSummaryResponse> result = cardService.listCards(null, "LEGENDARY", null, null, pageable);
 
             assertThat(result.getContent()).hasSize(1);
         }

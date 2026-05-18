@@ -49,7 +49,7 @@ class InventoryControllerTest {
                 .cardId(UUID.randomUUID()).cardName("Blue Dragon").rarity("LEGENDARY")
                 .quantity(3).acquiredAt(LocalDateTime.now()).build();
 
-        when(inventoryService.getUserInventory(eq(userId), any()))
+        when(inventoryService.getUserInventory(eq(userId), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(dto), PageRequest.of(0, 20), 1));
 
         mockMvc.perform(get("/api/v1/users/{userId}/inventory", userId))
@@ -62,7 +62,7 @@ class InventoryControllerTest {
     @DisplayName("200 - returns empty inventory")
     void shouldReturnEmptyInventory() throws Exception {
         UUID userId = UUID.randomUUID();
-        when(inventoryService.getUserInventory(eq(userId), any()))
+        when(inventoryService.getUserInventory(eq(userId), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
 
         mockMvc.perform(get("/api/v1/users/{userId}/inventory", userId))
@@ -74,7 +74,7 @@ class InventoryControllerTest {
     @DisplayName("404 - unknown user")
     void shouldReturn404ForUnknownUser() throws Exception {
         UUID userId = UUID.randomUUID();
-        when(inventoryService.getUserInventory(eq(userId), any()))
+        when(inventoryService.getUserInventory(eq(userId), any(), any(), any(), any(), any(), any()))
                 .thenThrow(new ResourceNotFoundException("User not found"));
 
         mockMvc.perform(get("/api/v1/users/{userId}/inventory", userId))
