@@ -44,6 +44,7 @@ spring:
     enabled: false
     locations: classpath:db/migration
 
+  # Kafka local via Docker — sin autenticación
   kafka:
     bootstrap-servers: localhost:9092
     producer:
@@ -113,7 +114,6 @@ management:
     web:
       exposure:
         include: health,info,readiness,liveness
-
   endpoint:
     health:
       show-details: always

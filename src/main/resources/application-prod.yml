@@ -52,7 +52,16 @@ spring:
     locations: classpath:db/migration
 
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    bootstrap-servers: ${KAFKA_HOST}:${KAFKA_PORT}
+    properties:
+      security.protocol: SASL_SSL
+      sasl.mechanism: SCRAM-SHA-512
+      sasl.jaas.config: >
+        org.apache.kafka.common.security.scram.ScramLoginModule required
+        username="${KAFKA_USERNAME}"
+        password="${KAFKA_PASSWORD}";
+      ssl.truststore.type: PEM
+      ssl.truststore.certificates: ${KAFKA_CA_CERT}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -102,11 +111,14 @@ app:
     secret: ${JWT_SECRET}
     access-token-expiration: 3600000
     refresh-token-expiration: 604800000
+
   mail:
     from: ${MAIL_FROM}
     from-name: Card Trading Platform
+
   cors:
     allowed-origins: ${ALLOWED_ORIGINS}
+
   frontend:
     base-path: ${FRONTEND_BASE_PATH:}
 
