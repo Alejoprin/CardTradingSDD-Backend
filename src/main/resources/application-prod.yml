@@ -62,9 +62,6 @@ spring:
         password="${KAFKA_PASSWORD}";
       ssl.truststore.type: PEM
       ssl.truststore.certificates: ${KAFKA_CA_CERT}
-      ssl.keystore.type: PEM
-      ssl.keystore.certificate.chain: ${KAFKA_SSL_CERT}
-      ssl.keystore.key: ${KAFKA_SSL_KEY}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
