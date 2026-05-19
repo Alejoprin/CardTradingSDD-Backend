@@ -52,14 +52,12 @@ spring:
     locations: classpath:db/migration
 
   kafka:
-    bootstrap-servers: ${KAFKA_HOST}:${KAFKA_PORT}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
     properties:
-      security.protocol: SASL_SSL
-      sasl.mechanism: SCRAM-SHA-512
-      sasl.jaas.config: >
-        org.apache.kafka.common.security.scram.ScramLoginModule required
-        username="${KAFKA_USERNAME}"
-        password="${KAFKA_PASSWORD}";
+      security.protocol: SSL
+      ssl.keystore.type: PEM
+      ssl.keystore.certificate.chain: ${KAFKA_ACCESS_CERT}
+      ssl.keystore.key: ${KAFKA_ACCESS_KEY}
       ssl.truststore.type: PEM
       ssl.truststore.certificates: ${KAFKA_CA_CERT}
     producer:
