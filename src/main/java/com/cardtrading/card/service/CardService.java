@@ -57,12 +57,14 @@ public class CardService {
     }
 
 
-    @Cacheable(value = "games:all")
     @Transactional(readOnly = true)
+    @CacheEvict(value = "games:all", allEntries = true)
     public List<CardGameDto> getAllGames() {
-        return cardGameRepository.findAll().stream()
-                .map(this::toGameDto)  // <-- Usa el método private
+        List<CardGameDto> games = cardGameRepository.findAll().stream()
+                .map(this::toGameDto)
                 .collect(Collectors.toList());
+        log.debug("Games fetched from DB: count={}", games.size());
+        return games;
     }
     private CardGameDto toGameDto(CardGame game) {
         return CardGameDto.builder()
